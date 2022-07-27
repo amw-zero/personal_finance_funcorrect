@@ -1,6 +1,6 @@
 
 //import { test } from "jest"
-import { Test } from '../react_ui/src/state.ts';
+import { Test } from './react_ui/src/state.ts';
 
 import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
 
