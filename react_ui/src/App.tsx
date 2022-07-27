@@ -67,7 +67,13 @@ function RecurringTransactionForm() {
         </div>
       </div>
     </>
-  )
+  );
+}
+
+function RecurringTransactionList() {
+  return (
+    <p>List</p>
+  );
 }
 
 function App() {
@@ -76,11 +82,10 @@ function App() {
       <h1 className="title">
         Create Recurring Transaction
       </h1>
-      <p className="subtitle">
-        My first website with <strong>Bulma</strong>!
-      </p>
+
       <RecurringTransactionForm />
-      
+      <RecurringTransactionList />
+
     </div>
   );
 }
