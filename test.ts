@@ -18,5 +18,3 @@ Deno.test("url test", async () => {
     return contains(text, text)
   }));
 });
-
-console.log("Test");

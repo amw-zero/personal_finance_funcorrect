@@ -6,15 +6,17 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def create
-    rt = RecurringTransaction.create!(recurring_transaction_params)
-    if rt
-      render json: :ok
+    puts "Creating: #{recurring_transaction_params}"
+    puts params
+    @rt = RecurringTransaction.new(recurring_transaction_params)
+    if @rt.save
+      render json: @rt
     else
-      render json: { error: 'fail' }
+      render json: { error: @rt.errors }
     end
   end
 
   def recurring_transaction_params
-    params.permit(:amount, :recurrence_rule, :name)
+    params.require(:recurring_transaction).permit(:amount, :recurrence_rule, :name)
   end
 end
