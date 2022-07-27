@@ -1,0 +1,2 @@
+class RecurringTransaction < ApplicationRecord
+end
