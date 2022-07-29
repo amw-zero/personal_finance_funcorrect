@@ -52,6 +52,7 @@ export class Client {
     error: string | null = null;
     recurringTransactions: RecurringTransaction[] = [];
 
+    // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
     async addRecurringTransaction(rt: CreateRecurringTransaction) {
         this.loading = true;
         let resp = await fetch("http://localhost:3000/recurring_transactions", {
@@ -87,5 +88,17 @@ export class Client {
             this.error = json.message;
             break;
         };
+    }
+
+    async setup() {
+        return fetch("http://localhost:3000/setup", {
+            method: "POST",
+        });
+    }
+
+    async teardown() {
+        return fetch("http://localhost:3000/teardown", {
+            method: "POST",
+        });
     }
 }

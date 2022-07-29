@@ -5,4 +5,7 @@ Rails.application.routes.draw do
   # root "articles#index"
 
   resources :recurring_transactions
+
+  post :setup, to: 'test#setup'
+  post :teardown, to: 'test#teardown'
 end

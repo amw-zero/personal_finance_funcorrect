@@ -5,19 +5,25 @@ import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
 
 import fc from 'https://cdn.skypack.dev/fast-check';
 
-Deno.test("functional correctness", async () => {
+Deno.test("functional correctness", async (t) => {
   let model = new Budget();
   let client = new Client();
 
-  let rt: CreateRecurringTransaction = { name: "idk", amount: 15.0, recurrenceRule: { recurrenceType: "monthly", day: 2 } };
+  await client.setup();
 
-  model.addRecurringTransaction(rt);
-  model.viewRecurringTransactions()
+  await t.step("create recurring transactions", async () => {
+    let rt: CreateRecurringTransaction = { name: "idk", amount: 15.0, recurrenceRule: { recurrenceType: "monthly", day: 2 } };
 
-  await client.addRecurringTransaction(rt);
-  await client.viewRecurringTransactions()
+    model.addRecurringTransaction(rt);
+    model.viewRecurringTransactions()
 
-  assertEquals(model.recurringTransactions, client.recurringTransactions);
+    await client.addRecurringTransaction(rt);
+    await client.viewRecurringTransactions()
+
+    assertEquals(model.recurringTransactions, client.recurringTransactions);
+  });
+
+  await client.teardown();
 
   fc.assert(fc.property(fc.string(), (text: string) => {
     return true;
