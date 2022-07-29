@@ -17,6 +17,7 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def recurring_transaction_params
+    puts "Params: #{params}"
     params.require(:recurring_transaction).permit(:amount, :recurrence_rule, :name)
   end
 end

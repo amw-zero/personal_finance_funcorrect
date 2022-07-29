@@ -7,12 +7,12 @@ export interface WeeklyRecurrence {
 }
 
 // day must be valid month number
-type MonthlyRecurrence = {
+export type MonthlyRecurrence = {
     recurrenceType: "monthly";
     day: number;
 }
 
-type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
+export type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
 
 interface RecurringTransaction {
     id: number;
@@ -80,7 +80,7 @@ function datesEqual(d1: Date, d2: Date) {
     return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 }
 
-class Budget {
+export class Budget {
     recurringTransactions: RecurringTransaction[] = [];
 
     addRecurringTransaction(crt: CreateRecurringTransaction) {
@@ -101,6 +101,7 @@ class Budget {
     }
 }
 
+/*
 let b: Budget = new Budget();
 b.addRecurringTransaction({
     name: "Rent", 
@@ -126,9 +127,7 @@ let endDt = new Date("11/30/2022");
 let rule = b.recurringTransactions[2].recurrenceRule as WeeklyRecurrence;
 console.log(rule.basis);
 console.log(expandRecurringTransaction(b.recurringTransactions[2], startDt, endDt));
-
-await Test();
-console.log("after");
+*/
 
 // Next:
 //   * Create React UI
