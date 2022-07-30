@@ -32,22 +32,6 @@ interface ScheduledTransaction {
     recurringTransaction: RecurringTransaction;
 }
 
-// Note: ids are part of the global state. Would need to
-// set these to match any initial state in property-based test
-let ids: Record<string, number> = {};
-
-function genId(type: string): number {
-    if (ids[type]) {
-        ids[type] += 1;
-
-        return ids[type];
-    }
-
-    ids[type] = 1;
-
-    return 1;
-}
-
 // Naive algorithm: generate all dates in between 
 // start and end. Filter out ones which do not meet
 // recurrence rule
@@ -82,9 +66,24 @@ function datesEqual(d1: Date, d2: Date) {
 
 export class Budget {
     recurringTransactions: RecurringTransaction[] = [];
+    // Note: ids are part of the global state. Would need to
+    // set these to match any initial state in property-based test
+    ids: Record<string, number> = {};
+
+    genId(type: string): number {
+        if (this.ids[type]) {
+            this.ids[type] += 1;
+
+            return this.ids[type];
+        }
+
+        this.ids[type] = 1;
+
+        return 1;
+    }
 
     addRecurringTransaction(crt: CreateRecurringTransaction) {
-        this.recurringTransactions.push({ id: genId("RecurringTransaction"), ...crt });
+        this.recurringTransactions.push({ id: this.genId("RecurringTransaction"), ...crt });
     }
 
     viewRecurringTransactions(): RecurringTransaction[] {

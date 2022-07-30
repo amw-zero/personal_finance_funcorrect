@@ -6,14 +6,11 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def create
-    puts "Creating: #{recurring_transaction_params}"
     @rt = RecurringTransaction.new(recurring_transaction_params)
     if @rt.save
-      puts "RT Create success"
-      render json: @rt
+      render json: @rt.attributes.to_h.merge({ type: 'recurring_transaction' })
     else
-      puts "RT Create fail"
-      render json: { error: @rt.errors }
+      render json: { type: 'error', message: @rt.errors }
     end
   end
 

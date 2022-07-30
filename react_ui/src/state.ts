@@ -40,7 +40,7 @@ export interface CreateRecurringTransaction {
 }
 
 interface AppError {
-    type: "app_error"
+    type: "error"
     message: string;
 }
 
@@ -63,14 +63,17 @@ export class Client {
             },
         });
         let json: RecurringTransactionResponse = await resp.json();
+
         this.loading = false;
         switch (json.type) {
         case "recurring_transaction":
             this.recurringTransactions.push(json);
             break;
-        case "app_error":
+        case "error":
             this.error = json.message;
             break;
+        default:
+            console.log("Default")
         };
     }
 
@@ -84,7 +87,7 @@ export class Client {
         case "recurring_transactions":
             this.recurringTransactions = json.recurringTransactions;
             break;
-        case "app_error":
+        case "error":
             this.error = json.message;
             break;
         };

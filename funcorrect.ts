@@ -5,20 +5,34 @@ import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
 
 import fc from 'https://cdn.skypack.dev/fast-check';
 
-class AddRecurringTransactionCommand implements fc.Command<Budget, Client> {
+class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> {
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
-  toString = () => `addRecurringTransaction(${this.crt})`;
+  toString = () => `addRecurringTransaction`;
 }
+
+// class CheckRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
+//   constructor() {}
+//   check = (m: Readonly<Budget>) => true;
+//   async run(b: Budget, c: Client): Promise<void> {
+    
+
+//     b.addRecurringTransaction(this.crt);
+//     await c.addRecurringTransaction(this.crt);
+//   }
+//   toString = () => `addRecurringTransaction(${this.crt})`;
+// }
 
 Deno.test("functional correctness", async (t) => {
   let client = new Client();
+
   const allCommands = [
-    fc.record({ name: fc.string(), amount: fc.integer() }).map(crt => new AddRecurringTransactionCommand({ ...crt, recurrenceRule: { recurrenceType: "monthly", day: 2 } }))
+    fc.record({ name: fc.string(), amount: fc.integer() }).map(crt => new AddRecurringTransactionCommand({ ...crt, recurrenceRule: { recurrenceType: "monthly", day: 2 } })),
+    /*fc.constant(new CheckRecurringTransactionsCommand())*/
   ];
 
   await fc.assert(
@@ -27,7 +41,22 @@ Deno.test("functional correctness", async (t) => {
       client = new Client();
 
       const env = () => ({ model, real: client });
-      return fc.asyncModelRun(env, cmds);
+      await fc.asyncModelRun(env, cmds);
+
+      // Check invariants
+      console.log("Checking invariants...");
+      console.log({model: model.recurringTransactions, client: client.recurringTransactions});
+      assertEquals(model.recurringTransactions.length, client.recurringTransactions.length);
+
+      for (let i = 0; i < model.recurringTransactions.length; i++) {
+        let mrt = model.recurringTransactions[i];
+        let crt = client.recurringTransactions[i];
+
+        // Only checking for name and amount right now, recurrence rule isn't implemented in backend
+        for (const prop in { name: mrt.name, amount: mrt.amount }) {
+          assertEquals(mrt[prop], crt[prop], `Checking model val: ${mrt[prop]} | impl: ${crt[prop]}`);
+        }
+      }
     }).beforeEach(() => {
       return client.setup()
     }).afterEach(() => {
