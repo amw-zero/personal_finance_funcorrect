@@ -9,34 +9,37 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
+    console.log("Creating rt");
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
   toString = () => `addRecurringTransaction`;
 }
 
-// class CheckRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
-//   constructor() {}
-//   check = (m: Readonly<Budget>) => true;
-//   async run(b: Budget, c: Client): Promise<void> {
-    
+class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
+  constructor() {}
+  check = (m: Readonly<Budget>) => true;
+  async run(b: Budget, c: Client): Promise<void> {
+    console.log("viewRecurringTransactions");
 
-//     b.addRecurringTransaction(this.crt);
-//     await c.addRecurringTransaction(this.crt);
-//   }
-//   toString = () => `addRecurringTransaction(${this.crt})`;
-// }
+    b.viewRecurringTransactions();
+    await c.viewRecurringTransactions();
+  }
+  toString = () => `viewRecurringTransactions`;
+}
 
 Deno.test("functional correctness", async (t) => {
   let client = new Client();
 
   const allCommands = [
     fc.record({ name: fc.string(), amount: fc.integer() }).map(crt => new AddRecurringTransactionCommand({ ...crt, recurrenceRule: { recurrenceType: "monthly", day: 2 } })),
-    /*fc.constant(new CheckRecurringTransactionsCommand())*/
+    fc.constant(new ViewRecurringTransactionsCommand())
   ];
 
   await fc.assert(
-    fc.asyncProperty(fc.commands(allCommands), async (cmds) => {
+    fc.asyncProperty(fc.commands(allCommands, { size: "medium" }), async (cmds) => {
+      console.log(`Checking scenario with ${cmds.commands.length} commands`);
+
       let model = new Budget();
       client = new Client();
 
@@ -45,7 +48,7 @@ Deno.test("functional correctness", async (t) => {
 
       // Check invariants
       console.log("Checking invariants...");
-      console.log({model: model.recurringTransactions, client: client.recurringTransactions});
+      //console.log({model: model.recurringTransactions, client: client.recurringTransactions});
       assertEquals(model.recurringTransactions.length, client.recurringTransactions.length);
 
       for (let i = 0; i < model.recurringTransactions.length; i++) {
@@ -57,11 +60,13 @@ Deno.test("functional correctness", async (t) => {
           assertEquals(mrt[prop], crt[prop], `Checking model val: ${mrt[prop]} | impl: ${crt[prop]}`);
         }
       }
+      console.log("\n\n")
     }).beforeEach(() => {
       return client.setup()
     }).afterEach(() => {
       return client.teardown();
-    })
+    }),
+    { numRuns: 100 }
   );
 
   // await fc.assert(fc.asyncProperty(fc.string(), async (text: string) => {
