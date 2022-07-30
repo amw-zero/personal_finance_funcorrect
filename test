@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
+# RAILS_ENV=test rails s &
+# TEST_SERVER_PID=$!
 
-deno test funcorrect.ts --allow-net
+deno test funcorrect.ts --allow-net --no-check
+
+#kill ${TEST_SERVER_PID}
