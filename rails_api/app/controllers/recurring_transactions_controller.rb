@@ -2,7 +2,7 @@ class RecurringTransactionsController < ApplicationController
   def index
     @recurring_transactions = RecurringTransaction.all
 
-    render json: @recurring_transactions
+    render json: { type: 'recurring_transactions', recurring_transactions: @recurring_transactions }
   end
 
   def create

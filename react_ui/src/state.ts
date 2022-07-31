@@ -28,7 +28,7 @@ interface RecurringTransaction {
 }
 
 interface RecurringTransactions {
-    recurringTransactions: RecurringTransaction[];
+    recurring_transactions: RecurringTransaction[];
 
     type: "recurring_transactions";
 }
@@ -66,18 +66,11 @@ export class Client {
     recurringTransactions: RecurringTransaction[] = [];
     scheduledTransactions: ScheduledTransaction[] = [];
 
-    // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
-    async addRecurringTransaction(rt: CreateRecurringTransaction) {
-        this.loading = true;
-        let resp = await fetch("http://localhost:3000/recurring_transactions", {
-            method: "POST",
-            body: JSON.stringify(rt),
-            headers: {
-                'Content-Type': "application/json",
-            },
-        });
-        let json: RecurringTransactionResponse = await resp.json();
+    constructor(config: (c: Client) => void = () => {}) {
+        config(this);
+    }
 
+    updateNewRecurringTransaction(json: RecurringTransactionResponse) {
         this.loading = false;
         switch (json.type) {
         case "recurring_transaction":
@@ -91,20 +84,48 @@ export class Client {
         };
     }
 
-    async viewRecurringTransactions() {
-        this.loading = true;
-        let resp = await fetch("http://localhost:3000/recurring_transactions");
-        let json: RecurringTransactionsResponse = await resp.json();
+    // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
+    async addRecurringTransaction(rt: CreateRecurringTransaction) {
+        this.updateLoading(true);
+        let resp = await fetch("http://localhost:3000/recurring_transactions", {
+            method: "POST",
+            body: JSON.stringify(rt),
+            headers: {
+                'Content-Type': "application/json",
+            },
+        });
+ 
+        this.updateNewRecurringTransaction(await resp.json());
+    }
+
+    // State updates are in a sync function, for Mobx
+    updateRecurringTransactions(json: RecurringTransactionsResponse) {
         this.loading = false;
 
+        console.log("Got em");
         switch (json.type) {
         case "recurring_transactions":
-            this.recurringTransactions = json.recurringTransactions;
+            console.log("Setting rts");
+            this.recurringTransactions = json.recurring_transactions;
             break;
         case "error":
             this.error = json.message;
             break;
+        default:
+            console.log("Default")
         };
+    }
+
+    updateLoading(l: boolean) {
+        this.loading = l;
+    }
+
+    async viewRecurringTransactions() {
+        this.updateLoading(true);
+        console.log("Fetching rts");
+        let resp = await fetch("http://localhost:3000/recurring_transactions");
+        
+        this.updateRecurringTransactions(await resp.json());
     }
 
     async viewScheduledTransactions(start: Date, end: Date) {

@@ -3,13 +3,18 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { Client } from './state';
+import { ClientContext } from './clientContext'
+import { makeAutoObservable } from 'mobx';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <ClientContext.Provider value={new Client(c => makeAutoObservable(c))}>
+      <App />
+    </ClientContext.Provider>
   </React.StrictMode>
 );
 
