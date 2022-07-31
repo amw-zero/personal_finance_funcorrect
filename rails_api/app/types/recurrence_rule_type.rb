@@ -8,7 +8,6 @@
 class RecurrenceRuleType < ActiveRecord::Type::Value
   def cast(value)
     if value.is_a?(String) && value =~ /^weekly|monthly:/ 
-      puts "Casted from String -> RecurrenceRule"
       value_components = value.split(':')
 
       if value_components.length != 2
@@ -20,7 +19,7 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
       attr_pairs = all_attrs.split(';')
       attrs = attr_pairs.each_with_object({}) do |attr_pair, attrs|
         k, v = attr_pair.split('=')
-        attrs[k] = v
+        attrs[k] = v.to_i
       end
 
       recurrence_type = 
@@ -33,6 +32,20 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
           raise "Attempted to cast unknown recurrence rule type: #{type}"
         end
     
+      super(recurrence_type.new(attrs))
+    elsif value.is_a?(ActiveSupport::HashWithIndifferentAccess)
+      recurrence_type = 
+        case value[:recurrenceType]
+        when 'monthly'
+          RecurrenceRule::Monthly
+        when 'weekly'
+          RecurrenceRule::Weekly
+        else
+          raise "Attempted to cast unknown recurrence rule type: #{value[:recurrenceType]}"
+        end
+
+      attrs = value.except(:recurrenceType)
+
       super(recurrence_type.new(attrs))
     else
       super

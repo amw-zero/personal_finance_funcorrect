@@ -119,6 +119,27 @@ const RecurringTransactionList = observer(() => {
   </>
 });
 
+const ScheduledTransactionList = observer(() => {
+  const client = useContext(ClientContext);
+
+  useEffect(
+    () => autorun(() => {
+      client.viewScheduledTransactions(new Date("July 1 2022"), new Date("July 31 2022"));
+    }), 
+    []
+  );
+  return (
+    <>
+      {client.scheduledTransactions.map(st => (
+        <div>
+          Name: {st.recurringTransaction.name}
+          Date: {st.date.toISOString()}
+        </div>
+      ))}
+    </>
+  );
+});
+
 function App() {
   return (
     <div className="container">
@@ -128,6 +149,7 @@ function App() {
 
       <RecurringTransactionForm />
       <RecurringTransactionList />
+      <ScheduledTransactionList />
 
     </div>
   );

@@ -67,8 +67,8 @@ Deno.test("functional correctness", async (t) => {
       // Check invariants
       console.log("Checking invariants...");
       console.log({model, client});
-      // UI state:
 
+      // UI state:
       assertEquals(client.loading, false);
       assertEquals(client.error, null);
 

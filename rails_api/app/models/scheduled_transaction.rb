@@ -5,13 +5,8 @@ ScheduledTransaction = Struct.new(:date, :name, :amount) do
         return [];
     end
 
-    start_date.upto(end_date).select { |d| rt.recurrence_rule.applies?(d) }
-  end
-
-  def self.expand_from_recurring_transaction(rt, start_date, end_date)
-    puts "Expanding recurring transaction - #{start_date}, #{end_date}"
-    this.recurringTransactions.flat_map do |rt|
-      expandRecurringTransaction(rt, start, end).map { |d| ScheduleTransaction.new(d, rt.name, rt.amount) }
-    end
+    start_date.upto(end_date)
+      .select { |d| rt.recurrence_rule.applies?(d) }
+      .map { |d| ScheduledTransaction.new(d, rt.name, rt.amount) }
   end
 end

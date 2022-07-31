@@ -87,9 +87,12 @@ export class Client {
     // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
     async addRecurringTransaction(rt: CreateRecurringTransaction) {
         this.updateLoading(true);
+        let body: any = { ...rt, recurrence_rule: rt.recurrenceRule }
+        delete body.recurrenceRule;
+
         let resp = await fetch("http://localhost:3000/recurring_transactions", {
             method: "POST",
-            body: JSON.stringify(rt),
+            body: JSON.stringify(body),
             headers: {
                 'Content-Type': "application/json",
             },
@@ -102,10 +105,8 @@ export class Client {
     updateRecurringTransactions(json: RecurringTransactionsResponse) {
         this.loading = false;
 
-        console.log("Got em");
         switch (json.type) {
         case "recurring_transactions":
-            console.log("Setting rts");
             this.recurringTransactions = json.recurring_transactions;
             break;
         case "error":

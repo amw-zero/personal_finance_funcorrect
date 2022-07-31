@@ -8,7 +8,6 @@ class RecurringTransactionsController < ApplicationController
   def create
     @rt = RecurringTransaction.new(recurring_transaction_params)
     if @rt.save
-      puts "Saved RecurringTransaction: #{RecurringTransaction.all.to_a}"
       render json: @rt.attributes.to_h.merge({ type: 'recurring_transaction' })
     else
       render json: { type: 'error', message: @rt.errors }
@@ -16,6 +15,6 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def recurring_transaction_params
-    params.require(:recurring_transaction).permit(:amount, :recurrence_rule, :name)
+    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrenceType, :day, :basis])
   end
 end
