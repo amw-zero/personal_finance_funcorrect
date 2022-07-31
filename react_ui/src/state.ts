@@ -172,7 +172,7 @@ export class Client {
 
     async viewScheduledTransactions(start: Date, end: Date) {
         this.updateLoading(true);
-        let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toISOString()}&end_date=${end.toISOString()}`);
+        let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toUTCString()}&end_date=${end.toUTCString()}`);
         let json: ScheduledTransactionsResponse = await resp.json();
         this.loading = false;
 

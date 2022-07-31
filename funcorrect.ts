@@ -40,7 +40,7 @@ class ViewScheduledTransactionsCommand implements fc.AsyncCommand<Budget, Client
 }
 
 const dateMin = new Date("1990-01-01T00:00:00.000Z");
-const dateMax = new Date("2020-01-01T00:00:00.000Z");
+const dateMax = new Date("1991-01-01T00:00:00.000Z");
 
 Deno.test("functional correctness", async (t) => {
   let client = new Client();
@@ -84,6 +84,6 @@ Deno.test("functional correctness", async (t) => {
       });
       console.log("\n")
     }),
-    { numRuns: 10 }
+    { numRuns: 500 }
   );
 });
