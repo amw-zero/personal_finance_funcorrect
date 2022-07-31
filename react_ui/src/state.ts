@@ -24,19 +24,30 @@ interface RecurringTransaction {
     amount: number;
     recurrenceRule: RecurrenceRule;
 
-    type: "recurring_transaction"
+    type: "recurring_transaction";
 }
 
 interface RecurringTransactions {
     recurringTransactions: RecurringTransaction[];
 
-    type: "recurring_transactions"
+    type: "recurring_transactions";
 }
 
 export interface CreateRecurringTransaction {
     name: string;
     amount: number;
     recurrenceRule: RecurrenceRule;
+}
+
+interface ScheduledTransaction {
+    date: Date;
+    recurringTransaction: RecurringTransaction;
+}
+
+interface ScheduledTransactions {
+    scheduled_transactions: ScheduledTransaction[];
+
+    type: "scheduled_transactions";
 }
 
 interface AppError {
@@ -46,11 +57,14 @@ interface AppError {
 
 type RecurringTransactionResponse = RecurringTransaction | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
+type ScheduledTransactionsResponse = ScheduledTransactions | AppError
 
 export class Client {
     loading: boolean = false;
     error: string | null = null;
+
     recurringTransactions: RecurringTransaction[] = [];
+    scheduledTransactions: ScheduledTransaction[] = [];
 
     // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
     async addRecurringTransaction(rt: CreateRecurringTransaction) {
@@ -86,6 +100,23 @@ export class Client {
         switch (json.type) {
         case "recurring_transactions":
             this.recurringTransactions = json.recurringTransactions;
+            break;
+        case "error":
+            this.error = json.message;
+            break;
+        };
+    }
+
+    async viewScheduledTransactions(start: Date, end: Date) {
+        this.loading = true;
+        let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toISOString()}&end_date=${end.toISOString()}`);
+        let json: ScheduledTransactionsResponse = await resp.json();
+        console.log({sched_transaction_resp: json});
+        this.loading = false;
+
+        switch (json.type) {
+        case "scheduled_transactions":
+            this.scheduledTransactions = json.scheduled_transactions;
             break;
         case "error":
             this.error = json.message;

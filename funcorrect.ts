@@ -9,7 +9,7 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("Creating rt");
+    console.log("[Action] addRecurringTransaction", this.crt);
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
@@ -20,7 +20,7 @@ class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client
   constructor() {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("viewRecurringTransactions");
+    console.log("[Action] viewRecurringTransactions");
 
     b.viewRecurringTransactions();
     await c.viewRecurringTransactions();
@@ -28,16 +28,34 @@ class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client
   toString = () => `viewRecurringTransactions`;
 }
 
+class ViewScheduledTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
+  constructor(readonly start: Date, readonly end: Date) {}
+  check = (m: Readonly<Budget>) => true;
+  async run(b: Budget, c: Client): Promise<void> {
+    console.log("[Action] viewScheduledTransactions", `start: ${this.start}, end: ${this.end}`);
+    b.viewScheduledTransactions(this.start, this.end);
+    await c.viewScheduledTransactions(this.start, this.end);
+  }
+  toString = () => `viewRecurringTransactions`;
+}
+
+const dateMin = new Date("1990-01-01T00:00:00.000Z");
+const dateMax = new Date("2020-01-01T00:00:00.000Z");
+
 Deno.test("functional correctness", async (t) => {
   let client = new Client();
 
   const allCommands = [
     fc.record({ name: fc.string(), amount: fc.integer() }).map(crt => new AddRecurringTransactionCommand({ ...crt, recurrenceRule: { recurrenceType: "monthly", day: 2 } })),
-    fc.constant(new ViewRecurringTransactionsCommand())
+    fc.constant(new ViewRecurringTransactionsCommand()),
+    fc.record({ 
+      start: fc.date({min: dateMin, max: dateMax}),
+      end: fc.date({min: dateMin, max: dateMax}), 
+    }).map(({ start, end }) => new ViewScheduledTransactionsCommand(start, end)),
   ];
 
   await fc.assert(
-    fc.asyncProperty(fc.commands(allCommands, { size: "medium" }), async (cmds) => {
+    fc.asyncProperty(fc.commands(allCommands, { size: "small" }), async (cmds) => {
       console.log(`Checking scenario with ${cmds.commands.length} commands`);
 
       let model = new Budget();
@@ -48,8 +66,14 @@ Deno.test("functional correctness", async (t) => {
 
       // Check invariants
       console.log("Checking invariants...");
-      //console.log({model: model.recurringTransactions, client: client.recurringTransactions});
-      assertEquals(model.recurringTransactions.length, client.recurringTransactions.length);
+      console.log({model, client});
+      // UI state:
+
+      assertEquals(client.loading, false);
+      assertEquals(client.error, null);
+
+      // Recurring Transactions
+      assertEquals(model.recurringTransactions.length, client.recurringTransactions.length, `recurringTransactions have different lengths. model: ${model.recurringTransactions.length}, impl: ${client.recurringTransactions.length}`);
 
       for (let i = 0; i < model.recurringTransactions.length; i++) {
         let mrt = model.recurringTransactions[i];
@@ -60,6 +84,19 @@ Deno.test("functional correctness", async (t) => {
           assertEquals(mrt[prop], crt[prop], `Checking model val: ${mrt[prop]} | impl: ${crt[prop]}`);
         }
       }
+
+      // Scheduled Transactions
+      assertEquals(model.scheduledTransactions.length, client.scheduledTransactions.length, `scheduledTransactions have different lengths. model: ${model.scheduledTransactions.length}, impl: ${client.scheduledTransactions.length}`);
+
+      for (let i = 0; i < model.scheduledTransactions.length; i++) {
+        let mst = model.scheduledTransactions[i];
+        let cst = client.scheduledTransactions[i];
+
+        // Only checking for name and amount right now, recurrence rule isn't implemented in backend
+        for (const prop in mst) {
+          assertEquals(mst[prop], cst[prop], `Checking model val: ${mst[prop]} | impl: ${cst[prop]}`);
+        }
+      }
       console.log("\n\n")
     }).beforeEach(() => {
       return client.setup()
@@ -68,23 +105,4 @@ Deno.test("functional correctness", async (t) => {
     }),
     { numRuns: 100 }
   );
-
-  // await fc.assert(fc.asyncProperty(fc.string(), async (text: string) => {
-  //   let model = new Budget();
-  //   client = new Client();
-    
-  //   let rt: CreateRecurringTransaction = { name: "idk", amount: 15.0, recurrenceRule: { recurrenceType: "monthly", day: 2 } };
-
-  //   model.addRecurringTransaction(rt);
-  //   model.viewRecurringTransactions()
-
-  //   await client.addRecurringTransaction(rt);
-  //   await client.viewRecurringTransactions()
-
-  //   return true;
-  // }).beforeEach(() => {
-  //   return client.setup()
-  // }).afterEach(() => {
-  //   return client.teardown();
-  // }));
 });

@@ -4,7 +4,8 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "articles#index"
 
-  resources :recurring_transactions
+  resources :recurring_transactions, only: [:create, :index]
+  resources :scheduled_transactions, only: [:index]
 
   post :setup, to: 'test#setup'
   post :teardown, to: 'test#teardown'

@@ -36,6 +36,11 @@ interface ScheduledTransaction {
 // start and end. Filter out ones which do not meet
 // recurrence rule
 function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, endDt: Date) {
+    if (startDt >= endDt) {
+        console.log(`expandRecurringTransaction: start date must be before end date, got start: ${startDt}, end: ${endDt}`);
+        return [];
+    }
+
     let datesInRange: Date[] = [];
     let currDt = startDt;
     while (!datesEqual(currDt, endDt)) {
@@ -66,6 +71,8 @@ function datesEqual(d1: Date, d2: Date) {
 
 export class Budget {
     recurringTransactions: RecurringTransaction[] = [];
+    scheduledTransactions: ScheduledTransaction[] = [];
+
     // Note: ids are part of the global state. Would need to
     // set these to match any initial state in property-based test
     ids: Record<string, number> = {};
@@ -90,13 +97,13 @@ export class Budget {
         return this.recurringTransactions;
     }
 
-    viewScheduledTransactions(start: Date, end: Date): ScheduledTransaction[][] {
-        let expanded = this.recurringTransactions.map(rt => 
+    viewScheduledTransactions(start: Date, end: Date) {
+        let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
                 { date: d, recurringTransaction: rt }
             )));
 
-        return expanded;
+        this.scheduledTransactions = expanded;
     }
 }
 
