@@ -4,6 +4,10 @@ module RecurrenceRule
       day == date.wday
     end
 
+    def recurrence_type
+      'weekly'
+    end
+
     def inspect
       "weekly:day=#{day};basis=#{basis}"
     end

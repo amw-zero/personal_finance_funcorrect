@@ -29,7 +29,8 @@ interface CreateRecurringTransaction {
 
 interface ScheduledTransaction {
     date: Date;
-    recurringTransaction: RecurringTransaction;
+    name: string;
+    amount: number;
 }
 
 // Naive algorithm: generate all dates in between 
@@ -100,7 +101,7 @@ export class Budget {
     viewScheduledTransactions(start: Date, end: Date) {
         let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
-                { date: d, recurringTransaction: rt }
+                { date: d.toISOString(), name: rt.name, amount: rt.amount }
             )));
 
         this.scheduledTransactions = expanded;

@@ -23,12 +23,35 @@ interface RecurringTransaction {
     name: string;
     amount: number;
     recurrenceRule: RecurrenceRule;
+}
+
+
+// day must be valid month number
+type MonthlyRecurrenceJson = {
+    recurrence_type: "monthly";
+    day: number;
+}
+
+interface WeeklyRecurrenceJson {
+    recurrence_type: "weekly";
+    interval: number;
+    day: number;
+    basis: Date;
+}
+
+type RecurrenceRuleJson = WeeklyRecurrenceJson | MonthlyRecurrenceJson
+
+interface RecurringTransactionJson {
+    id: number;
+    name: string;
+    amount: number;
+    recurrence_rule: RecurrenceRuleJson;
 
     type: "recurring_transaction";
 }
 
 interface RecurringTransactions {
-    recurring_transactions: RecurringTransaction[];
+    recurring_transactions: RecurringTransactionJson[];
 
     type: "recurring_transactions";
 }
@@ -41,7 +64,8 @@ export interface CreateRecurringTransaction {
 
 interface ScheduledTransaction {
     date: Date;
-    recurringTransaction: RecurringTransaction;
+    name: string;
+    amount: number;
 }
 
 interface ScheduledTransactions {
@@ -55,9 +79,28 @@ interface AppError {
     message: string;
 }
 
-type RecurringTransactionResponse = RecurringTransaction | AppError
+type RecurringTransactionResponse = RecurringTransactionJson | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
 type ScheduledTransactionsResponse = ScheduledTransactions | AppError
+
+function normalizeRecurrenceRule(json: RecurrenceRuleJson): RecurrenceRule {
+    switch (json.recurrence_type) {
+    case "monthly": return { recurrenceType: "monthly", day: json.day };
+    case "weekly": return { recurrenceType: "weekly", day: json.day, basis: json.basis, interval: json.interval }
+    default: 
+        console.log("Definitely shouldn't get here", json)
+        throw new Error("idk");
+    }
+}
+
+function normalizeRecurringTransaction(json: RecurringTransactionJson): RecurringTransaction {
+    return {
+        id: json.id,
+        name: json.name,
+        amount: json.amount,
+        recurrenceRule: normalizeRecurrenceRule(json.recurrence_rule)
+    }
+}
 
 export class Client {
     loading: boolean = false;
@@ -74,7 +117,7 @@ export class Client {
         this.loading = false;
         switch (json.type) {
         case "recurring_transaction":
-            this.recurringTransactions.push(json);
+            this.recurringTransactions.push(normalizeRecurringTransaction(json));
             break;
         case "error":
             this.error = json.message;
@@ -84,7 +127,6 @@ export class Client {
         };
     }
 
-    // add_recur_trans(AppState, CreateRecurringTransaction, ClientState)
     async addRecurringTransaction(rt: CreateRecurringTransaction) {
         this.updateLoading(true);
         let body: any = { ...rt, recurrence_rule: rt.recurrenceRule }
@@ -107,7 +149,7 @@ export class Client {
 
         switch (json.type) {
         case "recurring_transactions":
-            this.recurringTransactions = json.recurring_transactions;
+            this.recurringTransactions = json.recurring_transactions.map(normalizeRecurringTransaction);
             break;
         case "error":
             this.error = json.message;
@@ -123,17 +165,15 @@ export class Client {
 
     async viewRecurringTransactions() {
         this.updateLoading(true);
-        console.log("Fetching rts");
         let resp = await fetch("http://localhost:3000/recurring_transactions");
         
         this.updateRecurringTransactions(await resp.json());
     }
 
     async viewScheduledTransactions(start: Date, end: Date) {
-        this.loading = true;
+        this.updateLoading(true);
         let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toISOString()}&end_date=${end.toISOString()}`);
         let json: ScheduledTransactionsResponse = await resp.json();
-        console.log({sched_transaction_resp: json});
         this.loading = false;
 
         switch (json.type) {

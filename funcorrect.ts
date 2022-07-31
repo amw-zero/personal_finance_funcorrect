@@ -9,7 +9,7 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("[Action] addRecurringTransaction", this.crt);
+    console.log("[Action] addRecurringTransaction");
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
@@ -36,7 +36,7 @@ class ViewScheduledTransactionsCommand implements fc.AsyncCommand<Budget, Client
     b.viewScheduledTransactions(this.start, this.end);
     await c.viewScheduledTransactions(this.start, this.end);
   }
-  toString = () => `viewRecurringTransactions`;
+  toString = () => `viewScheduledTransactions`;
 }
 
 const dateMin = new Date("1990-01-01T00:00:00.000Z");
@@ -56,53 +56,34 @@ Deno.test("functional correctness", async (t) => {
 
   await fc.assert(
     fc.asyncProperty(fc.commands(allCommands, { size: "small" }), async (cmds) => {
-      console.log(`Checking scenario with ${cmds.commands.length} commands`);
+      await t.step(`Executing scenario with ${cmds.commands.length} commands`, async (t) => {
+        let model = new Budget();
+        client = new Client();
+  
+        const env = () => ({ model, real: client });
+        await fc.asyncModelRun(env, cmds);
+  
+        await t.step("Checking invariants between model and implementation", async (t) => {
+          await t.step("UI State", async () => {
+            assertEquals(client.loading, false);
+            assertEquals(client.error, null);
+          });
 
-      let model = new Budget();
-      client = new Client();
+          await t.step("Recurring transactions are equal", async () => {
+            assertEquals(client.recurringTransactions, model.recurringTransactions, );
+          });
 
-      const env = () => ({ model, real: client });
-      await fc.asyncModelRun(env, cmds);
-
-      // Check invariants
-      console.log("Checking invariants...");
-      console.log({model, client});
-
-      // UI state:
-      assertEquals(client.loading, false);
-      assertEquals(client.error, null);
-
-      // Recurring Transactions
-      assertEquals(model.recurringTransactions.length, client.recurringTransactions.length, `recurringTransactions have different lengths. model: ${model.recurringTransactions.length}, impl: ${client.recurringTransactions.length}`);
-
-      for (let i = 0; i < model.recurringTransactions.length; i++) {
-        let mrt = model.recurringTransactions[i];
-        let crt = client.recurringTransactions[i];
-
-        // Only checking for name and amount right now, recurrence rule isn't implemented in backend
-        for (const prop in { name: mrt.name, amount: mrt.amount }) {
-          assertEquals(mrt[prop], crt[prop], `Checking model val: ${mrt[prop]} | impl: ${crt[prop]}`);
-        }
-      }
-
-      // Scheduled Transactions
-      assertEquals(model.scheduledTransactions.length, client.scheduledTransactions.length, `scheduledTransactions have different lengths. model: ${model.scheduledTransactions.length}, impl: ${client.scheduledTransactions.length}`);
-
-      for (let i = 0; i < model.scheduledTransactions.length; i++) {
-        let mst = model.scheduledTransactions[i];
-        let cst = client.scheduledTransactions[i];
-
-        // Only checking for name and amount right now, recurrence rule isn't implemented in backend
-        for (const prop in mst) {
-          assertEquals(mst[prop], cst[prop], `Checking model val: ${mst[prop]} | impl: ${cst[prop]}`);
-        }
-      }
-      console.log("\n\n")
+          await t.step("Scheduled transactions are equal", async () => {
+            assertEquals(client.scheduledTransactions, model.scheduledTransactions);
+          });
+        });
+      });
+      console.log("\n")
     }).beforeEach(() => {
       return client.setup()
     }).afterEach(() => {
       return client.teardown();
     }),
-    { numRuns: 100 }
+    { numRuns: 10 }
   );
 });

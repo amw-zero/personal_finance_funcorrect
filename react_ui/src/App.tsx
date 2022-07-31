@@ -132,7 +132,7 @@ const ScheduledTransactionList = observer(() => {
     <>
       {client.scheduledTransactions.map(st => (
         <div>
-          Name: {st.recurringTransaction.name}
+          Name: {st.name}
           Date: {st.date.toISOString()}
         </div>
       ))}

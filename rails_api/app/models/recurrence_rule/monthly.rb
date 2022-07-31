@@ -4,8 +4,12 @@ module RecurrenceRule
       day == date.day
     end
 
+    def recurrence_type
+      'monthly'
+    end
+
     def inspect
       "monthly:day=#{day}"
-    end
+    end    
   end
 end

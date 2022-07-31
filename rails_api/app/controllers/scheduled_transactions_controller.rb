@@ -9,6 +9,16 @@ class ScheduledTransactionsController < ApplicationController
       )
     }
 
-    render json: { type: 'scheduled_transactions', scheduled_transactions: sts }
+    render json: { type: 'scheduled_transactions', scheduled_transactions: sts.map { |st| serialize_scheduled_transaction(st) } }
+  end
+
+  private
+
+  def serialize_scheduled_transaction(st)
+    {
+      date: st.date,
+      name: st.name,
+      amount: st.amount
+    }
   end
 end
