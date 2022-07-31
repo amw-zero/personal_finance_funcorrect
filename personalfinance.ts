@@ -101,43 +101,9 @@ export class Budget {
     viewScheduledTransactions(start: Date, end: Date) {
         let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
-                { date: d.toISOString(), name: rt.name, amount: rt.amount }
+                { date: d, name: rt.name, amount: rt.amount }
             )));
 
         this.scheduledTransactions = expanded;
     }
 }
-
-/*
-let b: Budget = new Budget();
-b.addRecurringTransaction({
-    name: "Rent", 
-    amount: 1000, 
-    recurrenceRule: { recurrenceType: "monthly", day: 1 }
-});
-b.addRecurringTransaction({
-    name: "Student Loan", 
-    amount: 500, 
-    recurrenceRule: { recurrenceType: "monthly", day: 7 }
-});
-b.addRecurringTransaction({
-    name: "Utilities", 
-    amount: 200, 
-    recurrenceRule: { recurrenceType: "weekly", interval: 2, day: 6, basis: new Date("01/01/2019") }
-});
-
-let startDt = new Date("08/1/2022");
-let endDt = new Date("11/30/2022");
-
-// console.log(b.viewScheduledTransactions(startDt, endDt));
-
-let rule = b.recurringTransactions[2].recurrenceRule as WeeklyRecurrence;
-console.log(rule.basis);
-console.log(expandRecurringTransaction(b.recurringTransactions[2], startDt, endDt));
-*/
-
-// Next:
-//   * Create React UI
-//   * Create client side requests
-//   * Create backend
-//   * Create test that compares client connected to real backend to model. 
