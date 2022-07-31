@@ -16,7 +16,7 @@ class ScheduledTransactionsController < ApplicationController
 
   def serialize_scheduled_transaction(st)
     {
-      date: st.date,
+      date: st.date.strftime('%m/%d/%Y'),
       name: st.name,
       amount: st.amount
     }

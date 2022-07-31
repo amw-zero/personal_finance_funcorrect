@@ -28,7 +28,7 @@ interface CreateRecurringTransaction {
 }
 
 interface ScheduledTransaction {
-    date: Date;
+    date: string;
     name: string;
     amount: number;
 }
@@ -101,7 +101,7 @@ export class Budget {
     viewScheduledTransactions(start: Date, end: Date) {
         let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
-                { date: d, name: rt.name, amount: rt.amount }
+                { date: d.toLocaleDateString("en-us", { year: "numeric", month: "2-digit", day: "2-digit" }), name: rt.name, amount: rt.amount }
             )));
 
         this.scheduledTransactions = expanded;

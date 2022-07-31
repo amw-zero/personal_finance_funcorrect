@@ -9,7 +9,7 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("[Action] addRecurringTransaction");
+    console.log("  [Action] addRecurringTransaction", this.crt);
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
@@ -20,7 +20,7 @@ class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client
   constructor() {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("[Action] viewRecurringTransactions");
+    console.log("  [Action] viewRecurringTransactions");
 
     b.viewRecurringTransactions();
     await c.viewRecurringTransactions();
@@ -32,7 +32,7 @@ class ViewScheduledTransactionsCommand implements fc.AsyncCommand<Budget, Client
   constructor(readonly start: Date, readonly end: Date) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("[Action] viewScheduledTransactions", `start: ${this.start}, end: ${this.end}`);
+    console.log("  [Action] viewScheduledTransactions", `start: ${this.start}, end: ${this.end}`);
     b.viewScheduledTransactions(this.start, this.end);
     await c.viewScheduledTransactions(this.start, this.end);
   }
@@ -56,6 +56,8 @@ Deno.test("functional correctness", async (t) => {
 
   await fc.assert(
     fc.asyncProperty(fc.commands(allCommands, { size: "small" }), async (cmds) => {
+      await client.setup();
+
       await t.step(`Executing scenario with ${cmds.commands.length} commands`, async (t) => {
         let model = new Budget();
         client = new Client();
@@ -77,12 +79,10 @@ Deno.test("functional correctness", async (t) => {
             assertEquals(client.scheduledTransactions, model.scheduledTransactions);
           });
         });
+
+        await client.teardown();
       });
       console.log("\n")
-    }).beforeEach(() => {
-      return client.setup()
-    }).afterEach(() => {
-      return client.teardown();
     }),
     { numRuns: 10 }
   );
