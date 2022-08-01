@@ -8,7 +8,7 @@
 class RecurrenceRuleType < ActiveRecord::Type::Value
   def cast(value)
     if value.is_a?(String) && value =~ /^weekly|monthly:/ 
-      value_components = value.split(':')
+      value_components = value.split('::')
 
       if value_components.length != 2
         raise "Recurrence rule DB strings must be of the format ''<type>:attr1=v1;attr2=v2;...'. Attempted to cast a string with #{value_components.length} components: #{value}" 
@@ -19,7 +19,9 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
       attr_pairs = all_attrs.split(';')
       attrs = attr_pairs.each_with_object({}) do |attr_pair, attrs|
         k, v = attr_pair.split('=')
-        attrs[k] = v.to_i
+        if !v.nil?
+          attrs[k] = v.to_i
+        end
       end
 
       recurrence_type = 
@@ -57,9 +59,9 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
       attrs = value.to_h.to_a.map { |k, v| "#{k}=#{v}" }.join(";")
       case value
       when RecurrenceRule::Monthly
-        super("monthly:#{attrs}")
+        super("monthly::#{attrs}")
       when RecurrenceRule::Weekly
-        super("weekly:#{attrs}")
+        super("weekly::#{attrs}")
       end
     else
       super
