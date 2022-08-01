@@ -170,20 +170,22 @@ export class Client {
         this.updateRecurringTransactions(await resp.json());
     }
 
+    updateScheduledTransactions(json: ScheduledTransactionsResponse) {
+        switch (json.type) {
+            case "scheduled_transactions":
+                this.scheduledTransactions = json.scheduled_transactions;
+                break;
+            case "error":
+                this.error = json.message;
+                break;
+            };
+    }
+
     async viewScheduledTransactions(start: Date, end: Date) {
         this.updateLoading(true);
         let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toUTCString()}&end_date=${end.toUTCString()}`);
-        let json: ScheduledTransactionsResponse = await resp.json();
-        this.loading = false;
 
-        switch (json.type) {
-        case "scheduled_transactions":
-            this.scheduledTransactions = json.scheduled_transactions;
-            break;
-        case "error":
-            this.error = json.message;
-            break;
-        };
+        this.updateScheduledTransactions(await resp.json());
     }
 
     async setup() {
