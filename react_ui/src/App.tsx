@@ -1,9 +1,16 @@
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState, FC } from 'react';
 import {observer} from 'mobx-react-lite'
 import {autorun} from 'mobx';
 import { CreateRecurringTransaction } from './state';
 import { ClientContext } from './clientContext'
 import { Formik, Form, Field, ErrorMessage } from 'formik';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Outlet
+} from "react-router-dom";
 import './App.css';
 
 interface FormValues {
@@ -19,13 +26,14 @@ interface RecurringTransactionFormProps {
 function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }: RecurringTransactionFormProps) {
   const client = useContext(ClientContext);
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     console.log("Submitting", values);
-    client.addRecurringTransaction({
+    await client.addRecurringTransaction({
       name: values.name,
       amount: values.amount,
       recurrenceRule: { recurrenceType: "weekly", day: 1, basis: new Date(), interval: 0 }
-    })
+    });
+    onCloseRecurringTransactionForm();
   };
 
   let classnames = `modal ${isActive ? "is-active": ""}`;
@@ -129,11 +137,22 @@ const RecurringTransactionList = observer(() => {
   );
   
   return <>
-    Test
-    <p>{client.recurringTransactions.length}</p>
-    {client.recurringTransactions.map((rt) => (
-      <p key={rt.id}>{rt.name}</p>
-    ))}
+    <table className="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Recurrence Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          {client.recurringTransactions.map(rt => (
+            <tr key={rt.id}>
+              <td>{rt.name}</td>
+              <td>{rt.recurrenceRule.recurrenceType}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
   </>
 });
 
@@ -149,14 +168,23 @@ const ScheduledTransactionList = observer(() => {
   );
   return (
     <>
-      {client.scheduledTransactions.map(st => (
-        <div key={`${st.name}${st.date}`}>
-          <>
-            <p>Name: {st.name}</p>
-            <p>{`Date: ${st.date}`}</p>
-          </>
-        </div>
-      ))}
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Amount</th>
+            <th>Recurrence Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          {client.scheduledTransactions.map(st => (
+            <tr key={`${st.name}${st.date}`}>
+              <td>{st.name}</td>
+              <td>{st.date.toString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </>
   );
 });
@@ -169,76 +197,68 @@ function Navbar({ onShowRecurringTransactionForm }: NavbarProps) {
   return (
     <>
       <nav className="navbar" role="navigation" aria-label="main navigation">
-  <div className="navbar-brand">
-    <a role="button" className="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
-      <span aria-hidden="true"></span>
-      <span aria-hidden="true"></span>
-      <span aria-hidden="true"></span>
-    </a>
-  </div>
-
-  <div id="navbarBasicExample" className="navbar-menu">
-    <div className="navbar-start">
-      <a className="navbar-item">
-        Home
-      </a>
-
-      <a className="navbar-item">
-        Documentation
-      </a>
-
-      <div className="navbar-item has-dropdown is-hoverable">
-        <a className="navbar-link">
-          More
-        </a>
-
-        <div className="navbar-dropdown">
-          <a className="navbar-item">
-            About
-          </a>
-          <a className="navbar-item">
-            Jobs
-          </a>
-          <a className="navbar-item">
-            Contact
-          </a>
-          <hr className="navbar-divider" />
-          <a className="navbar-item">
-            Report an issue
+        <div className="navbar-brand">
+          <a role="button" className="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
           </a>
         </div>
-      </div>
-    </div>
 
-    <div className="navbar-end">
-      <div className="navbar-item">
-        <div className="buttons">
-          <a className="button is-primary" onClick={() => onShowRecurringTransactionForm()}>
-            <strong>Create Recurring Transaction</strong>
-          </a>
-          <a className="button is-light">
-            Log in
-          </a>
+        <div id="navbarBasicExample" className="navbar-menu">
+          <div className="navbar-start">
+            <Link to="/" className="navbar-item">
+              Recurring Transactions
+            </Link>
+            <Link to="/scheduled-transactions" className="navbar-item">
+              Scheduled Transactions
+            </Link>
+          </div>
+
+          <div className="navbar-end">
+            <div className="navbar-item">
+              <div className="buttons">
+                <a className="button is-primary" onClick={() => onShowRecurringTransactionForm()}>
+                  <strong>Create Recurring Transaction</strong>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</nav>
+      </nav>
     </>
   );
+}
+
+interface LayoutProps {
+  onShowRecurringTransactionForm: () => void;
+}
+
+function Layout({ onShowRecurringTransactionForm }: LayoutProps) {
+  return (
+    <>
+      <Navbar onShowRecurringTransactionForm={onShowRecurringTransactionForm}/>
+      <div className="container">
+        <Outlet />
+      </div>
+    </>
+  )
 }
 
 function App() {
   const [showingRecurringTransactionForm, setShowingRecurringTransactionForm] = useState(false);
   return (
-    <div className="container">
-      <Navbar onShowRecurringTransactionForm={() => setShowingRecurringTransactionForm(true)}/>      
+    <>
       <RecurringTransactionForm isActive={showingRecurringTransactionForm} onCloseRecurringTransactionForm={() => setShowingRecurringTransactionForm(false)}/>
-      <RecurringTransactionList />
-      <h2>Scheduled Transactions</h2>
-      <ScheduledTransactionList />
-
-    </div>
+      <Router>
+      <Routes>
+        <Route path="/" element={<Layout onShowRecurringTransactionForm={() => setShowingRecurringTransactionForm(true)}/>}>
+          <Route path="/" element={<RecurringTransactionList />} />
+          <Route path="/scheduled-transactions" element={<ScheduledTransactionList />} /> 
+        </Route>
+      </Routes>
+      </Router>
+    </>
   );
 }
 
