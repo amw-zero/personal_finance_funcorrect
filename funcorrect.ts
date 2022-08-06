@@ -9,7 +9,11 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
   constructor(readonly crt: CreateRecurringTransaction) {}
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
-    console.log("  [Action] addRecurringTransaction", this.crt);
+    console.log("  [Action] addRecurringTransaction");
+    console.group();
+    console.log(JSON.stringify(this.crt, null, 2));
+    console.groupEnd();
+
     b.addRecurringTransaction(this.crt);
     await c.addRecurringTransaction(this.crt);
   }
@@ -33,6 +37,7 @@ class ViewScheduledTransactionsCommand implements fc.AsyncCommand<Budget, Client
   check = (m: Readonly<Budget>) => true;
   async run(b: Budget, c: Client): Promise<void> {
     console.log("  [Action] viewScheduledTransactions", `start: ${this.start}, end: ${this.end}`);
+
     b.viewScheduledTransactions(this.start, this.end);
     await c.viewScheduledTransactions(this.start, this.end);
   }
@@ -46,7 +51,19 @@ Deno.test("functional correctness", async (t) => {
   let client = new Client();
 
   const allCommands = [
-    fc.record({ name: fc.string(), amount: fc.integer() }).map(crt => new AddRecurringTransactionCommand({ ...crt, recurrenceRule: { recurrenceType: "monthly", day: 2 } })),
+      fc.record({ 
+        name: fc.string(), 
+        amount: fc.integer(), 
+        recurrenceRule: fc.oneof(
+          fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+          fc.record({ 
+            recurrenceType: fc.constant("weekly"), 
+            day: fc.integer({min: 0, max: 31 }), 
+            basis: fc.option(fc.date({min: dateMin, max: dateMax})), 
+            interval: fc.option(fc.integer({min: 1, max: 20})) 
+          })
+        ) 
+      }).map(crt => new AddRecurringTransactionCommand(crt)),
     fc.constant(new ViewRecurringTransactionsCommand()),
     fc.record({ 
       start: fc.date({min: dateMin, max: dateMax}),
@@ -66,13 +83,17 @@ Deno.test("functional correctness", async (t) => {
         await fc.asyncModelRun(env, cmds);
   
         await t.step("Checking invariants between model and implementation", async (t) => {
-          await t.step("UI State", async () => {
-            assertEquals(client.loading, false);
-            assertEquals(client.error, null);
+          await t.step("UI State", async (t) => {
+            await t.step("loading", async () => {
+              assertEquals(client.loading, false);
+            })
+            await t.step("error", async () => {
+              assertEquals(client.error, null);
+            });
           });
 
           await t.step("Recurring transactions are equal", async () => {
-            assertEquals(client.recurringTransactions, model.recurringTransactions, );
+            assertEquals(client.recurringTransactions, model.recurringTransactions);
           });
 
           await t.step("Scheduled transactions are equal", async () => {
@@ -84,6 +105,6 @@ Deno.test("functional correctness", async (t) => {
       });
       console.log("\n")
     }),
-    { numRuns: 500 }
+    { numRuns: 100 }
   );
 });

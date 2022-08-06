@@ -6,7 +6,8 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def create
-    rt = RecurringTransaction.new(recurring_transaction_params)    
+    rt = RecurringTransaction.new(recurring_transaction_params)
+
     if rt.save
       render json: serialize_recurring_transaction(rt)
     else
@@ -15,10 +16,24 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def recurring_transaction_params
-    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrenceType, :day, :basis])
+    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrenceType, :day, :basis, :interval])
   end
 
   private
+
+  def serialize_recurrence_rule(rr)
+    case rr
+    when RecurrenceRule::Monthly
+      rr.to_h.merge({
+        recurrence_type: rr.recurrence_type,
+      })
+    when RecurrenceRule::Weekly
+      rr.to_h.merge({
+        basis: rr.basis&.strftime('%Y-%m-%dT%H:%M:%S.%NZ'),
+        recurrence_type: rr.recurrence_type,
+      })
+    end
+  end
 
   def serialize_recurring_transaction(rt)
     {
@@ -26,9 +41,7 @@ class RecurringTransactionsController < ApplicationController
       type: 'recurring_transaction',
       name: rt.name,
       amount: rt.amount,
-      recurrence_rule: rt.recurrence_rule.to_h.merge({
-        recurrence_type: rt.recurrence_rule.recurrence_type,
-      })
+      recurrence_rule: serialize_recurrence_rule(rt.recurrence_rule),
     }
   end
 end

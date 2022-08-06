@@ -1,5 +1,15 @@
 module RecurrenceRule
-  Monthly = Struct.new(:day, keyword_init: true) do
+  class Monthly
+    attr_reader :day
+
+    def initialize(day:)
+      @day = day
+    end
+
+    def self.from_attrs(attrs)
+      Monthly.new(day: attrs['day'].to_i)
+    end
+
     def applies?(date)
       day == date.day
     end
@@ -10,6 +20,16 @@ module RecurrenceRule
 
     def inspect
       "monthly:day=#{day}"
-    end    
+    end
+
+    def to_h
+      {
+        day: @day
+      }
+    end
+
+    def db_serialize
+      to_h
+    end
   end
 end

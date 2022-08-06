@@ -1,5 +1,21 @@
 module RecurrenceRule
-  Weekly = Struct.new(:interval, :day, :basis, keyword_init: true) do
+  class Weekly
+    attr_reader :interval, :day, :basis
+
+    def initialize(interval:, day:, basis:)
+      @interval = interval
+      @day = day
+      @basis = basis
+    end
+
+    def self.from_attrs(attrs)
+      interval = attrs['interval'].to_i if !attrs['interval'].nil?
+      day = attrs['day'].to_i
+      basis = DateTime.parse(attrs['basis']) if !attrs['basis'].nil?
+
+      Weekly.new(interval: interval, day: day, basis: basis)
+    end
+
     def applies?(date)
       day == date.wday
     end
@@ -9,7 +25,21 @@ module RecurrenceRule
     end
 
     def inspect
-      "weekly:day=#{day};basis=#{basis}"
+      "weekly:day=#{day};basis=#{basis};interval=#{interval}"
+    end
+
+    def to_h
+      {
+        interval: @interval,
+        day: @day,
+        basis: @basis,
+      }
+    end
+
+    def db_serialize
+      to_h.merge({
+        basis: basis&.strftime('%Y-%m-%dT%H:%M:%S.%NZ')
+      })
     end
   end
 end

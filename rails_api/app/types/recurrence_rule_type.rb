@@ -20,7 +20,7 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
       attrs = attr_pairs.each_with_object({}) do |attr_pair, attrs|
         k, v = attr_pair.split('=')
         if !v.nil?
-          attrs[k] = v.to_i
+          attrs[k] = v
         end
       end
 
@@ -34,7 +34,7 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
           raise "Attempted to cast unknown recurrence rule type: #{type}"
         end
     
-      super(recurrence_type.new(attrs))
+      super(recurrence_type.from_attrs(attrs))
     elsif value.is_a?(ActiveSupport::HashWithIndifferentAccess)
       recurrence_type = 
         case value[:recurrenceType]
@@ -48,7 +48,7 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
 
       attrs = value.except(:recurrenceType)
 
-      super(recurrence_type.new(attrs))
+      super(recurrence_type.from_attrs(attrs))
     else
       super
     end
@@ -56,7 +56,7 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
 
   def serialize(value)
     if value.is_a?(RecurrenceRule::Monthly) || value.is_a?(RecurrenceRule::Weekly)
-      attrs = value.to_h.to_a.map { |k, v| "#{k}=#{v}" }.join(";")
+      attrs = value.db_serialize.to_a.map { |k, v| "#{k}=#{v}" }.join(";")
       case value
       when RecurrenceRule::Monthly
         super("monthly::#{attrs}")

@@ -33,9 +33,9 @@ interface ScheduledTransaction {
     amount: number;
 }
 
-// Naive algorithm: generate all dates in between 
-// start and end. Filter out ones which do not meet
-// recurrence rule
+// Simple algorithm: generate all dates in between 
+// start and end. Filter out ones which do not satisfy
+// the recurrence rule.
 function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, endDt: Date) {
     if (startDt >= endDt) {
         console.log(`expandRecurringTransaction: start date must be before end date, got start: ${startDt}, end: ${endDt}`);
@@ -70,6 +70,10 @@ function datesEqual(d1: Date, d2: Date) {
     return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 }
 
+function formatDate(d: Date): string {
+    return d.toLocaleDateString("en-us", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
 export class Budget {
     recurringTransactions: RecurringTransaction[] = [];
     scheduledTransactions: ScheduledTransaction[] = [];
@@ -101,7 +105,7 @@ export class Budget {
     viewScheduledTransactions(start: Date, end: Date) {
         let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
-                { date: d.toLocaleDateString("en-us", { year: "numeric", month: "2-digit", day: "2-digit" }), name: rt.name, amount: rt.amount }
+                { date: formatDate(d), name: rt.name, amount: rt.amount }
             )));
 
         this.scheduledTransactions = expanded;

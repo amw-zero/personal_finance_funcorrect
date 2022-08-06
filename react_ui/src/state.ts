@@ -7,7 +7,7 @@ interface WeeklyRecurrence {
     recurrenceType: "weekly";
     interval: number;
     day: number;
-    basis: Date;
+    basis: Date | null;
 }
 
 // day must be valid month number
@@ -83,13 +83,15 @@ type RecurringTransactionResponse = RecurringTransactionJson | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
 type ScheduledTransactionsResponse = ScheduledTransactions | AppError
 
-function normalizeRecurrenceRule(json: RecurrenceRuleJson): RecurrenceRule {
+function normalizeRecurrenceRule(json: RecurrenceRuleJson): RecurrenceRule {    
     switch (json.recurrence_type) {
     case "monthly": return { recurrenceType: "monthly", day: json.day };
-    case "weekly": return { recurrenceType: "weekly", day: json.day, basis: json.basis, interval: json.interval }
-    default: 
-        console.log("Definitely shouldn't get here", json)
-        throw new Error("idk");
+    case "weekly": 
+        let basis: Date | null = null;
+        if (json.basis) {
+            basis = new Date(json.basis);
+        }
+        return { recurrenceType: "weekly", day: json.day, basis, interval: json.interval }
     }
 }
 
@@ -123,7 +125,7 @@ export class Client {
             this.error = json.message;
             break;
         default:
-            console.log("Default")
+            console.log("Default was hit when updating new recurring transaction")
         };
     }
 
@@ -155,7 +157,7 @@ export class Client {
             this.error = json.message;
             break;
         default:
-            console.log("Default")
+            console.log("Default was hit when updating recurring transactions")
         };
     }
 
@@ -171,6 +173,7 @@ export class Client {
     }
 
     updateScheduledTransactions(json: ScheduledTransactionsResponse) {
+        this.updateLoading(false);
         switch (json.type) {
             case "scheduled_transactions":
                 this.scheduledTransactions = json.scheduled_transactions;
