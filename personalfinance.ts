@@ -1,4 +1,3 @@
-// day of basis must equal day
 export interface WeeklyRecurrence {
     recurrenceType: "weekly";
     interval: number;
@@ -6,7 +5,6 @@ export interface WeeklyRecurrence {
     basis: Date;
 }
 
-// day must be valid month number
 export type MonthlyRecurrence = {
     recurrenceType: "monthly";
     day: number;
@@ -66,10 +64,6 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
     });
 }
 
-function datesEqual(d1: Date, d2: Date) {
-    return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
-}
-
 function formatDate(d: Date): string {
     return d.toLocaleDateString("en-us", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
@@ -77,22 +71,9 @@ function formatDate(d: Date): string {
 export class Budget {
     recurringTransactions: RecurringTransaction[] = [];
     scheduledTransactions: ScheduledTransaction[] = [];
+    error: string | null = null;
 
-    // Note: ids are part of the global state. Would need to
-    // set these to match any initial state in property-based test
     ids: Record<string, number> = {};
-
-    genId(type: string): number {
-        if (this.ids[type]) {
-            this.ids[type] += 1;
-
-            return this.ids[type];
-        }
-
-        this.ids[type] = 1;
-
-        return 1;
-    }
 
     addRecurringTransaction(crt: CreateRecurringTransaction) {
         this.recurringTransactions.push({ id: this.genId("RecurringTransaction"), ...crt });
@@ -107,7 +88,29 @@ export class Budget {
             expandRecurringTransaction(rt, start, end).map(d => (
                 { date: formatDate(d), name: rt.name, amount: rt.amount }
             )));
+        
+        expanded.sort((d1, d2) => {
+            if (d2.date > d1.date) {
+                return -1;
+            } else if (d2.date < d1.date) {
+                return 1;
+            } else {
+                return 0;
+            }
+        });
 
         this.scheduledTransactions = expanded;
+    }
+
+    genId(type: string): number {
+        if (this.ids[type]) {
+            this.ids[type] += 1;
+
+            return this.ids[type];
+        }
+
+        this.ids[type] = 1;
+
+        return 1;
     }
 }

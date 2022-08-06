@@ -1,13 +1,13 @@
 class ScheduledTransactionsController < ApplicationController
   def index
     rts = RecurringTransaction.all
-    sts = rts.flat_map { |rt| 
+    sts = rts.flat_map do |rt| 
       ScheduledTransaction.expand_recurring_transaction(
         rt, 
         DateTime.parse(params[:start_date]), 
         DateTime.parse(params[:end_date])
       )
-    }
+    end.sort { |st1, st2| st1.date <=> st2.date }
 
     render json: { type: 'scheduled_transactions', scheduled_transactions: sts.map { |st| serialize_scheduled_transaction(st) } }
   end

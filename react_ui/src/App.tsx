@@ -27,7 +27,6 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
   const client = useContext(ClientContext);
 
   const onSubmit = async (values: FormValues) => {
-    console.log("Submitting", values);
     await client.addRecurringTransaction({
       name: values.name,
       amount: values.amount,
@@ -161,7 +160,6 @@ const ScheduledTransactionList = observer(() => {
 
   useEffect(
     () => autorun(() => {
-      console.log("Fetching scheduled transactions");
       client.viewScheduledTransactions(new Date("July 1 2022"), new Date("August 31 2022"));
     }), 
     []
@@ -173,13 +171,14 @@ const ScheduledTransactionList = observer(() => {
           <tr>
             <th>Name</th>
             <th>Amount</th>
-            <th>Recurrence Rule</th>
+            <th>Date</th>
           </tr>
         </thead>
         <tbody>
           {client.scheduledTransactions.map(st => (
             <tr key={`${st.name}${st.date}`}>
               <td>{st.name}</td>
+              <td>{st.amount}</td>
               <td>{st.date.toString()}</td>
             </tr>
           ))}

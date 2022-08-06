@@ -51,19 +51,19 @@ Deno.test("functional correctness", async (t) => {
   let client = new Client();
 
   const allCommands = [
-      fc.record({ 
-        name: fc.string(), 
-        amount: fc.integer(), 
-        recurrenceRule: fc.oneof(
-          fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
-          fc.record({ 
-            recurrenceType: fc.constant("weekly"), 
-            day: fc.integer({min: 0, max: 31 }), 
-            basis: fc.option(fc.date({min: dateMin, max: dateMax})), 
-            interval: fc.option(fc.integer({min: 1, max: 20})) 
-          })
-        ) 
-      }).map(crt => new AddRecurringTransactionCommand(crt)),
+    fc.record({ 
+      name: fc.string(), 
+      amount: fc.integer(), 
+      recurrenceRule: fc.oneof(
+        fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+        fc.record({ 
+          recurrenceType: fc.constant("weekly"), 
+          day: fc.integer({min: 0, max: 31 }), 
+          basis: fc.option(fc.date({min: dateMin, max: dateMax})), 
+          interval: fc.option(fc.integer({min: 1, max: 20})) 
+        })
+      ) 
+    }).map(crt => new AddRecurringTransactionCommand(crt)),
     fc.constant(new ViewRecurringTransactionsCommand()),
     fc.record({ 
       start: fc.date({min: dateMin, max: dateMax}),
@@ -88,7 +88,7 @@ Deno.test("functional correctness", async (t) => {
               assertEquals(client.loading, false);
             })
             await t.step("error", async () => {
-              assertEquals(client.error, null);
+              assertEquals(client.error, model.error);
             });
           });
 
@@ -105,6 +105,6 @@ Deno.test("functional correctness", async (t) => {
       });
       console.log("\n")
     }),
-    { numRuns: 100 }
+    { numRuns: 10 }
   );
 });
