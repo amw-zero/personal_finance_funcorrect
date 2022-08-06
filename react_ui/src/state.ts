@@ -1,8 +1,3 @@
-// State binding for application kernel
-
-// Property: for all transitions, the state bound in the React UI matches the 
-// plain object state
-
 interface WeeklyRecurrence {
     recurrenceType: "weekly";
     interval: number;

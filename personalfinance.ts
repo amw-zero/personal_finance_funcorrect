@@ -44,7 +44,7 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
 
     let datesInRange: Date[] = [];
     let currDt = startDt;
-    while (!datesEqual(currDt, endDt)) {
+    while (currDt < endDt) {
         datesInRange.push(currDt);
 
         // Advance by 1 day

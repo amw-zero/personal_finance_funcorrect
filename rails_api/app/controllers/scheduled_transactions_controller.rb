@@ -4,8 +4,8 @@ class ScheduledTransactionsController < ApplicationController
     sts = rts.flat_map { |rt| 
       ScheduledTransaction.expand_recurring_transaction(
         rt, 
-        Date.parse(params[:start_date]), 
-        Date.parse(params[:end_date])
+        DateTime.parse(params[:start_date]), 
+        DateTime.parse(params[:end_date])
       )
     }
 
