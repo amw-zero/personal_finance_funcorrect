@@ -1,6 +1,6 @@
 import React, { useEffect, useContext, useState, FC } from 'react';
 import {observer} from 'mobx-react-lite'
-import {autorun} from 'mobx';
+import {autorun, reaction} from 'mobx';
 import { CreateRecurringTransaction } from './state';
 import { ClientContext } from './clientContext'
 import { Formik, Form, Field, ErrorMessage } from 'formik';
@@ -159,11 +159,18 @@ const ScheduledTransactionList = observer(() => {
   const client = useContext(ClientContext);
 
   useEffect(
-    () => autorun(() => {
-      client.viewScheduledTransactions(new Date("July 1 2022"), new Date("August 31 2022"));
-    }), 
+    () => reaction(
+      () => client.recurringTransactions,
+      () => client.viewScheduledTransactions(new Date("July 1 2022"), new Date("July 31 2022"))
+    ), 
     []
   );
+
+  useEffect(
+    () => autorun(() => client.viewScheduledTransactions(new Date("July 1 2022"), new Date("July 31 2022"))),
+    []
+  );
+
   return (
     <>
       <table className="table">

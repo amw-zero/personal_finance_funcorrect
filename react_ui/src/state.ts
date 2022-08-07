@@ -114,7 +114,7 @@ export class Client {
         this.loading = false;
         switch (json.type) {
         case "recurring_transaction":
-            this.recurringTransactions.push(normalizeRecurringTransaction(json));
+            this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
             break;
         case "error":
             this.error = json.message;
