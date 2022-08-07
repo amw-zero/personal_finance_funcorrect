@@ -1,13 +1,10 @@
-
 class TestController < ApplicationController
   def setup
-    puts 'Test#setup'
-    DatabaseCleaner.strategy = :truncation
+    DatabaseCleaner.strategy = DatabaseCleaner::ActiveRecord::Truncation.new(pre_count: true)
     DatabaseCleaner.start
   end
 
   def teardown
-    puts 'Test#teardown'
     DatabaseCleaner.clean
   end
 end

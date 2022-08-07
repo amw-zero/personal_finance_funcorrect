@@ -1,3 +1,5 @@
+const API_HOST = "http://localhost:3000";
+
 interface WeeklyRecurrence {
     recurrenceType: "weekly";
     interval: number;
@@ -5,7 +7,6 @@ interface WeeklyRecurrence {
     basis: Date | null;
 }
 
-// day must be valid month number
 type MonthlyRecurrence = {
     recurrenceType: "monthly";
     day: number;
@@ -20,8 +21,6 @@ interface RecurringTransaction {
     recurrenceRule: RecurrenceRule;
 }
 
-
-// day must be valid month number
 type MonthlyRecurrenceJson = {
     recurrence_type: "monthly";
     day: number;
@@ -100,14 +99,56 @@ function normalizeRecurringTransaction(json: RecurringTransactionJson): Recurrin
 }
 
 export class Client {
-    loading: boolean = false;
-    error: string | null = null;
-
     recurringTransactions: RecurringTransaction[] = [];
     scheduledTransactions: ScheduledTransaction[] = [];
 
+    loading: boolean = false;
+    error: string | null = null;
+
     constructor(config: (c: Client) => void = () => {}) {
         config(this);
+    }
+
+    async addRecurringTransaction(rt: CreateRecurringTransaction) {
+        this.updateLoading(true);
+        let body: any = { ...rt, recurrence_rule: rt.recurrenceRule }
+        delete body.recurrenceRule;
+
+        let resp = await fetch(`${API_HOST}/recurring_transactions`, {
+            method: "POST",
+            body: JSON.stringify(body),
+            headers: {
+                'Content-Type': "application/json",
+            },
+        });
+ 
+        this.updateNewRecurringTransaction(await resp.json());
+    }
+
+    async viewRecurringTransactions() {
+        this.updateLoading(true);
+        let resp = await fetch(`${API_HOST}/recurring_transactions`);
+        
+        this.updateRecurringTransactions(await resp.json());
+    }
+
+    async viewScheduledTransactions(start: Date, end: Date) {
+        this.updateLoading(true);
+        let resp = await fetch(`${API_HOST}/scheduled_transactions?start_date=${start.toUTCString()}&end_date=${end.toUTCString()}`);
+
+        this.updateScheduledTransactions(await resp.json());
+    }
+
+    async setup() {
+        return fetch(`${API_HOST}/setup`, {
+            method: "POST",
+        });
+    }
+
+    async teardown() {
+        return fetch(`${API_HOST}/teardown`, {
+            method: "POST",
+        });
     }
 
     updateNewRecurringTransaction(json: RecurringTransactionResponse) {
@@ -124,23 +165,6 @@ export class Client {
         };
     }
 
-    async addRecurringTransaction(rt: CreateRecurringTransaction) {
-        this.updateLoading(true);
-        let body: any = { ...rt, recurrence_rule: rt.recurrenceRule }
-        delete body.recurrenceRule;
-
-        let resp = await fetch("http://localhost:3000/recurring_transactions", {
-            method: "POST",
-            body: JSON.stringify(body),
-            headers: {
-                'Content-Type': "application/json",
-            },
-        });
- 
-        this.updateNewRecurringTransaction(await resp.json());
-    }
-
-    // State updates are in a sync function, for Mobx
     updateRecurringTransactions(json: RecurringTransactionsResponse) {
         this.loading = false;
 
@@ -160,13 +184,6 @@ export class Client {
         this.loading = l;
     }
 
-    async viewRecurringTransactions() {
-        this.updateLoading(true);
-        let resp = await fetch("http://localhost:3000/recurring_transactions");
-        
-        this.updateRecurringTransactions(await resp.json());
-    }
-
     updateScheduledTransactions(json: ScheduledTransactionsResponse) {
         this.updateLoading(false);
         switch (json.type) {
@@ -177,24 +194,5 @@ export class Client {
                 this.error = json.message;
                 break;
             };
-    }
-
-    async viewScheduledTransactions(start: Date, end: Date) {
-        this.updateLoading(true);
-        let resp = await fetch(`http://localhost:3000/scheduled_transactions?start_date=${start.toUTCString()}&end_date=${end.toUTCString()}`);
-
-        this.updateScheduledTransactions(await resp.json());
-    }
-
-    async setup() {
-        return fetch("http://localhost:3000/setup", {
-            method: "POST",
-        });
-    }
-
-    async teardown() {
-        return fetch("http://localhost:3000/teardown", {
-            method: "POST",
-        });
-    }
+    }    
 }

@@ -105,6 +105,6 @@ Deno.test("functional correctness", async (t) => {
       });
       console.log("\n")
     }),
-    { numRuns: 10 }
+    { numRuns: 100 }
   );
 });

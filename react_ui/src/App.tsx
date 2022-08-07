@@ -1,7 +1,6 @@
-import React, { useEffect, useContext, useState, FC } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import {observer} from 'mobx-react-lite'
 import {autorun, reaction} from 'mobx';
-import { CreateRecurringTransaction } from './state';
 import { ClientContext } from './clientContext'
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import {

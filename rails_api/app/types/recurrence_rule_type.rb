@@ -1,11 +1,22 @@
 # Recurrence rules are stored as a string with format:
-#   '<type>:attr1=v1;attr2=v2;...'
+#   '<type>::attr1=v1;attr2=v2;...'
 #
 # The type represents the different rule types, e.g. Monthly and Weekly,
 # and the list of attribute keys and values represent the data for each
 # rule type.
 
 class RecurrenceRuleType < ActiveRecord::Type::Value
+  def resolve_rrule_type(type_str)
+    case type_str
+    when 'monthly'
+      RecurrenceRule::Monthly
+    when 'weekly'
+      RecurrenceRule::Weekly
+    else
+      raise "Attempted to cast unknown recurrence rule type: #{type}"
+    end
+  end
+
   def cast(value)
     if value.is_a?(String) && value =~ /^weekly|monthly:/ 
       value_components = value.split('::')
@@ -24,31 +35,11 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
         end
       end
 
-      recurrence_type = 
-        case type
-        when 'monthly'
-          RecurrenceRule::Monthly
-        when 'weekly'
-          RecurrenceRule::Weekly
-        else
-          raise "Attempted to cast unknown recurrence rule type: #{type}"
-        end
-    
-      super(recurrence_type.from_attrs(attrs))
+      super(resolve_rrule_type(type).from_attrs(attrs))
     elsif value.is_a?(ActiveSupport::HashWithIndifferentAccess)
-      recurrence_type = 
-        case value[:recurrenceType]
-        when 'monthly'
-          RecurrenceRule::Monthly
-        when 'weekly'
-          RecurrenceRule::Weekly
-        else
-          raise "Attempted to cast unknown recurrence rule type: #{value[:recurrenceType]}"
-        end
-
       attrs = value.except(:recurrenceType)
 
-      super(recurrence_type.from_attrs(attrs))
+      super(resolve_rrule_type(value[:recurrenceType]).from_attrs(attrs))
     else
       super
     end
