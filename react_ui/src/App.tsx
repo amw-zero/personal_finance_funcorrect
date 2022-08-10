@@ -3,6 +3,9 @@ import {observer} from 'mobx-react-lite'
 import {autorun, reaction} from 'mobx';
 import { ClientContext } from './clientContext'
 import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { FormField } from './components/FormField';
+import { RadioGroup, RadioGroupOption } from './components/RadioGroup';
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -16,20 +19,39 @@ interface FormValues {
   name: string;
   amount: number;
 }
-
 interface RecurringTransactionFormProps {
   isActive: boolean;
   onCloseRecurringTransactionForm: () => void;
 }
 
+type RecurrenceName = "recurrenceType.weekly" | "recurrenceType.monthly";
+
+function renderRecurrenceTypeFields(recurrenceType: RecurrenceName) {
+  switch (recurrenceType) {
+  case "recurrenceType.weekly": return (
+    <FormField>
+      "Monthly"
+    </FormField>
+  );
+  case "recurrenceType.monthly": return (
+    <FormField>
+      "Other"
+    </FormField>
+  );
+  }
+}
+
 function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }: RecurringTransactionFormProps) {
   const client = useContext(ClientContext);
+  
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceName>("recurrenceType.monthly");
+  const selectRecurrenceType = (o: RadioGroupOption) => setRecurrenceType(o.name as RecurrenceName );
 
   const onSubmit = async (values: FormValues) => {
     await client.addRecurringTransaction({
       name: values.name,
       amount: values.amount,
-      recurrenceRule: { recurrenceType: "weekly", day: 1, basis: new Date(), interval: 0 }
+      recurrenceRule: { recurrenceType: "weekly", day: 1, basis: new Date(), interval: 2 }
     });
     onCloseRecurringTransactionForm();
   };
@@ -49,19 +71,38 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
             {({handleSubmit, handleChange, handleBlur, values}) => (
               <section className="modal-card-body">
               <form onSubmit={handleSubmit}>
-                <div className="field">
+                <FormField>
                   <label className="label">Name</label>
                   <div className="control">
                     <input className="input" name="name" type="text" placeholder="name" value={values.name} onChange={handleChange} onBlur={handleBlur}/>
                   </div>
-                </div>  
+                </FormField>  
 
-                <div className="field">
+                <FormField>
                   <label className="label">Amount</label>
                   <div className="control">
                     <input className="input" name="amount" type="number" placeholder="amount" value={values.amount} onChange={handleChange} onBlur={handleBlur} />
                   </div>
-                </div>
+                </FormField>
+
+                <h2 className="is-size-4 mb-4 mt-4">Recurrence Rule</h2>
+                <FormField>
+                  <RadioGroup 
+                    options={[
+                      {
+                        name: "recurrenceType.monthly",
+                        label: "Monthly"
+                      },
+                      {
+                        name: "recurrenceType.weekly",
+                        label: "Weekly"
+                      }
+                    ]}
+                    onSelectOption={selectRecurrenceType}
+                  />
+                </FormField>
+
+                {renderRecurrenceTypeFields(recurrenceType)}
 
                 {/*
                 <div className="field">
