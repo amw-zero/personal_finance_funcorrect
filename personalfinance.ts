@@ -1,8 +1,24 @@
+type DateString = string;
+
+function getDateStringTime(ds: DateString): number {
+    let d = new Date(ds);
+
+    return d.getTime();
+}
+
+function dateStringFromDate(d: Date): DateString {
+    let month = (d.getMonth() + 1).toString().padStart(2, "0");
+    let day = d.getDate().toString().padStart(2, "0");
+    let year = d.getFullYear().toString();
+
+    return `${month}/${day}/${year}`;
+}
+
 export interface WeeklyRecurrence {
     recurrenceType: "weekly";
-    interval: number;
+    interval: number | null;
     day: number;
-    basis: Date;
+    basis: DateString | null;
 }
 
 export type MonthlyRecurrence = {
@@ -10,7 +26,7 @@ export type MonthlyRecurrence = {
     day: number;
 }
 
-export type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
+export type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence;
 
 interface RecurringTransaction {
     id: number;
@@ -19,16 +35,63 @@ interface RecurringTransaction {
     recurrenceRule: RecurrenceRule;
 }
 
+export interface CreateWeeklyRecurrence {
+    recurrenceType: "weekly";
+    interval: number | null;
+    day: number;
+    basis: Date | null;
+}
+
+export type CreateMonthlyRecurrence = {
+    recurrenceType: "monthly";
+    day: number;
+}
+
+export type CreateRecurrenceRule = CreateWeeklyRecurrence | CreateMonthlyRecurrence;
+
 interface CreateRecurringTransaction {
     name: string;
     amount: number;
-    recurrenceRule: RecurrenceRule;
+    recurrenceRule: CreateRecurrenceRule;
+}
+
+function recurringTransactionFromCreate(id: number, crt: CreateRecurringTransaction): RecurringTransaction {
+    switch (crt.recurrenceRule.recurrenceType) {
+    case "weekly":
+        let basis: DateString | null = null;
+        if (crt.recurrenceRule.basis) {
+            basis = dateStringFromDate(crt.recurrenceRule.basis);
+            console.log("Set basis", basis);
+        }
+          
+        return { id, ...crt, recurrenceRule: { ...crt.recurrenceRule, basis } }
+    case "monthly":
+        return { id, ...crt, recurrenceRule: crt.recurrenceRule };
+    }
 }
 
 interface ScheduledTransaction {
     date: string;
     name: string;
     amount: number;
+}
+
+function doesWeeklyRuleApply(d: Date, rule: WeeklyRecurrence): boolean {    
+    if (rule.interval && rule.basis) {
+        let normalizedDateStr = dateStringFromDate(d);
+        let normalizedDate = new Date(normalizedDateStr);
+        let basisDate = new Date(rule.basis);
+        let dayDelta = Math.floor((normalizedDate.getTime() + (normalizedDate.getTimezoneOffset() * 60 * 1000) - basisDate.getTime() + (basisDate.getTimezoneOffset() * 60 * 1000) ) / (1000 * 3600 * 24));
+
+
+        return (dayDelta / 7.0) % rule.interval == 0;
+    }
+
+    if (rule.interval || rule.basis) {
+        return false;
+    }
+
+    return d.getDay() === rule.day;
 }
 
 // Simple algorithm: generate all dates in between 
@@ -46,8 +109,8 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
         datesInRange.push(currDt);
 
         // Advance by 1 day
-        let date = currDt.getDate()
-        currDt = new Date(currDt.getTime());
+        let date = currDt.getDate();
+        currDt = new Date(currDt);
         currDt.setDate(date + 1);
     }
 
@@ -56,16 +119,11 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
         case "monthly":
             return d.getDate() === rt.recurrenceRule.day;
         case "weekly":
-            // TODO: Get basis week working
-            return d.getDay() === rt.recurrenceRule.day;
+            return doesWeeklyRuleApply(d, rt.recurrenceRule);
         default:
             return false;
         }
     });
-}
-
-function formatDate(d: Date): string {
-    return d.toLocaleDateString("en-us", { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
 export class Budget {
@@ -76,7 +134,7 @@ export class Budget {
     ids: Record<string, number> = {};
 
     addRecurringTransaction(crt: CreateRecurringTransaction) {
-        this.recurringTransactions.push({ id: this.genId("RecurringTransaction"), ...crt });
+        this.recurringTransactions.push(recurringTransactionFromCreate(this.genId("RecurringTransaction"), crt));
     }
 
     viewRecurringTransactions(): RecurringTransaction[] {
@@ -86,7 +144,7 @@ export class Budget {
     viewScheduledTransactions(start: Date, end: Date) {
         let expanded = this.recurringTransactions.flatMap(rt => 
             expandRecurringTransaction(rt, start, end).map(d => (
-                { date: formatDate(d), name: rt.name, amount: rt.amount }
+                { date: dateStringFromDate(d), name: rt.name, amount: rt.amount }
             )));
         
         expanded.sort((d1, d2) => {
@@ -96,6 +154,7 @@ export class Budget {
                 return 1;
             } else {
                 return 0;
+//                return d1.name.localeCompare(d2.name);
             }
         });
 

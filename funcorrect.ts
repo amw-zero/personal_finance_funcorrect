@@ -59,8 +59,8 @@ Deno.test("functional correctness", async (t) => {
         fc.record({ 
           recurrenceType: fc.constant("weekly"), 
           day: fc.integer({min: 0, max: 31 }), 
-          basis: fc.option(fc.date({min: dateMin, max: dateMax})), 
-          interval: fc.option(fc.integer({min: 1, max: 20})) 
+          basis: fc.option(fc.date({min: dateMin, max: dateMax})),
+          interval: fc.option(fc.integer({min: 1, max: 60})) 
         })
       ) 
     }).map(crt => new AddRecurringTransactionCommand(crt)),

@@ -37,9 +37,9 @@ class RecurrenceRuleType < ActiveRecord::Type::Value
 
       super(resolve_rrule_type(type).from_attrs(attrs))
     elsif value.is_a?(ActiveSupport::HashWithIndifferentAccess)
-      attrs = value.except(:recurrenceType)
+      attrs = value.except(:recurrence_type)
 
-      super(resolve_rrule_type(value[:recurrenceType]).from_attrs(attrs))
+      super(resolve_rrule_type(value[:recurrence_type]).from_attrs(attrs))
     else
       super
     end

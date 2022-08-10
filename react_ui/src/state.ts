@@ -1,10 +1,10 @@
-const API_HOST = "http://localhost:3000";
+type DateString = string;
 
 interface WeeklyRecurrence {
     recurrenceType: "weekly";
-    interval: number;
+    interval: number | null;
     day: number;
-    basis: Date | null;
+    basis: DateString | null;
 }
 
 type MonthlyRecurrence = {
@@ -28,9 +28,9 @@ type MonthlyRecurrenceJson = {
 
 interface WeeklyRecurrenceJson {
     recurrence_type: "weekly";
-    interval: number;
+    interval: number | null;
     day: number;
-    basis: Date;
+    basis: DateString | null;
 }
 
 type RecurrenceRuleJson = WeeklyRecurrenceJson | MonthlyRecurrenceJson
@@ -50,10 +50,24 @@ interface RecurringTransactions {
     type: "recurring_transactions";
 }
 
-export interface CreateRecurringTransaction {
+export interface CreateWeeklyRecurrence {
+    recurrenceType: "weekly";
+    interval: number | null;
+    day: number;
+    basis: Date | null;
+}
+
+export type CreateMonthlyRecurrence = {
+    recurrenceType: "monthly";
+    day: number;
+}
+
+export type CreateRecurrenceRule = CreateWeeklyRecurrence | CreateMonthlyRecurrence;
+
+interface CreateRecurringTransaction {
     name: string;
     amount: number;
-    recurrenceRule: RecurrenceRule;
+    recurrenceRule: CreateRecurrenceRule;
 }
 
 interface ScheduledTransaction {
@@ -77,15 +91,13 @@ type RecurringTransactionResponse = RecurringTransactionJson | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
 type ScheduledTransactionsResponse = ScheduledTransactions | AppError
 
-function normalizeRecurrenceRule(json: RecurrenceRuleJson): RecurrenceRule {    
+const API_HOST = "http://localhost:3000";
+
+function normalizeRecurrenceRuleJson(json: RecurrenceRuleJson): RecurrenceRule {    
     switch (json.recurrence_type) {
     case "monthly": return { recurrenceType: "monthly", day: json.day };
     case "weekly": 
-        let basis: Date | null = null;
-        if (json.basis) {
-            basis = new Date(json.basis);
-        }
-        return { recurrenceType: "weekly", day: json.day, basis, interval: json.interval }
+        return { recurrenceType: "weekly", day: json.day, basis: json.basis, interval: json.interval }
     }
 }
 
@@ -94,7 +106,42 @@ function normalizeRecurringTransaction(json: RecurringTransactionJson): Recurrin
         id: json.id,
         name: json.name,
         amount: json.amount,
-        recurrenceRule: normalizeRecurrenceRule(json.recurrence_rule)
+        recurrenceRule: normalizeRecurrenceRuleJson(json.recurrence_rule)
+    }
+}
+
+function serializeDate(d: Date): string {
+    let month = (d.getMonth() + 1).toString().padStart(2, "0");
+    let day = d.getDate().toString().padStart(2, "0");
+    let year = d.getFullYear().toString();
+    return `${year}-${month}-${day}`;
+}
+
+function serializeRecurringTransaction(crt: CreateRecurringTransaction) {
+    switch (crt.recurrenceRule.recurrenceType) {
+    case "monthly": return JSON.stringify({ 
+        name: crt.name, 
+        amount: crt.amount, 
+        recurrence_rule: { 
+            recurrence_type: "monthly",
+            day: crt.recurrenceRule.day,
+        }
+    });
+    case "weekly": 
+        let basisDate: string | null = null;
+        if (crt.recurrenceRule.basis) {
+            basisDate = serializeDate(crt.recurrenceRule.basis);
+        }
+        return JSON.stringify({ 
+            name: crt.name, 
+            amount: crt.amount, 
+            recurrence_rule: { 
+                recurrence_type: "weekly",
+                day: crt.recurrenceRule.day,
+                interval: crt.recurrenceRule.interval,
+                basis: basisDate,
+            }
+        });
     }
 }
 
@@ -109,14 +156,14 @@ export class Client {
         config(this);
     }
 
-    async addRecurringTransaction(rt: CreateRecurringTransaction) {
+    async addRecurringTransaction(crt: CreateRecurringTransaction) {
         this.updateLoading(true);
-        let body: any = { ...rt, recurrence_rule: rt.recurrenceRule }
-        delete body.recurrenceRule;
+
+        console.log("Creating recurring transaction", serializeRecurringTransaction(crt));
 
         let resp = await fetch(`${API_HOST}/recurring_transactions`, {
             method: "POST",
-            body: JSON.stringify(body),
+            body: serializeRecurringTransaction(crt),
             headers: {
                 'Content-Type': "application/json",
             },
@@ -134,7 +181,7 @@ export class Client {
 
     async viewScheduledTransactions(start: Date, end: Date) {
         this.updateLoading(true);
-        let resp = await fetch(`${API_HOST}/scheduled_transactions?start_date=${start.toUTCString()}&end_date=${end.toUTCString()}`);
+        let resp = await fetch(`${API_HOST}/scheduled_transactions?start_date=${serializeDate(start)}&end_date=${serializeDate(end)}`);
 
         this.updateScheduledTransactions(await resp.json());
     }
@@ -153,6 +200,7 @@ export class Client {
 
     updateNewRecurringTransaction(json: RecurringTransactionResponse) {
         this.loading = false;
+        console.log("New recurring transaction response", json);
         switch (json.type) {
         case "recurring_transaction":
             this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
@@ -188,6 +236,7 @@ export class Client {
         this.updateLoading(false);
         switch (json.type) {
             case "scheduled_transactions":
+                console.log("Got scheduled transactions: ", json.scheduled_transactions);
                 this.scheduledTransactions = json.scheduled_transactions;
                 break;
             case "error":

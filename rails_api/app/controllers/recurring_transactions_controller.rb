@@ -16,7 +16,7 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def recurring_transaction_params
-    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrenceType, :day, :basis, :interval])
+    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrence_type, :day, :basis, :interval])
   end
 
   private
@@ -29,7 +29,7 @@ class RecurringTransactionsController < ApplicationController
       })
     when RecurrenceRule::Weekly
       rr.to_h.merge({
-        basis: rr.basis&.strftime('%Y-%m-%dT%H:%M:%S.%NZ'),
+        basis: rr.basis&.strftime('%m/%d/%Y'),
         recurrence_type: rr.recurrence_type,
       })
     end
