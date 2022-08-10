@@ -75,10 +75,18 @@ interface ScheduledTransaction {
     amount: number;
 }
 
+function timeWithTzOffset(d: Date): number {
+    return d.getTime() - d.getTimezoneOffset() * 60 * 1000;
+}
+
+const ONE_DAY = 1000 * 60 * 60 * 24
+
 function doesWeeklyRuleApply(d: Date, rule: WeeklyRecurrence): boolean {    
     if (rule.interval && rule.basis) {
         let basisDate = new Date(rule.basis);
-        let dayDelta = Math.floor((d.getTime() + (d.getTimezoneOffset() * 60 * 1000) - basisDate.getTime() + (basisDate.getTimezoneOffset() * 60 * 1000) ) / (1000 * 3600 * 24));
+        let dayDelta = Math.floor(
+            (timeWithTzOffset(d) - timeWithTzOffset(basisDate)) / ONE_DAY
+        );
 
         return (dayDelta / 7.0) % rule.interval == 0;
     }
