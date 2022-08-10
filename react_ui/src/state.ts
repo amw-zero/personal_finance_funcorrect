@@ -159,8 +159,6 @@ export class Client {
     async addRecurringTransaction(crt: CreateRecurringTransaction) {
         this.updateLoading(true);
 
-        console.log("Creating recurring transaction", serializeRecurringTransaction(crt));
-
         let resp = await fetch(`${API_HOST}/recurring_transactions`, {
             method: "POST",
             body: serializeRecurringTransaction(crt),
@@ -200,7 +198,6 @@ export class Client {
 
     updateNewRecurringTransaction(json: RecurringTransactionResponse) {
         this.loading = false;
-        console.log("New recurring transaction response", json);
         switch (json.type) {
         case "recurring_transaction":
             this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
@@ -236,7 +233,6 @@ export class Client {
         this.updateLoading(false);
         switch (json.type) {
             case "scheduled_transactions":
-                console.log("Got scheduled transactions: ", json.scheduled_transactions);
                 this.scheduledTransactions = json.scheduled_transactions;
                 break;
             case "error":

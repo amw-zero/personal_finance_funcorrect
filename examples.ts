@@ -230,21 +230,32 @@ Deno.test("Multiple recurring transactions that map to scheduled transactions on
   await client.setup();
 
   await t.step("they should have a secondary sort on name", async () => {
+    // Mb4K and "Sp16" expand to the same day on 10/03/1990.
     let rts = [
       {
-        name: "B",
-        amount: 1202177524,
-        recurrenceRule: {
-          recurrenceType: "monthly",
-          day: 28
+        "name": "WvO",
+        "amount": -281448130,
+        "recurrenceRule": {
+          "recurrenceType": "monthly",
+          "day": 17
         }
       },
       {
-        name: "A",
-        amount: -1531327368,
-        recurrenceRule: {
-          recurrenceType: "monthly",
-          day: 28
+        "name": "Mb4K",
+        "amount": -1385224395,
+        "recurrenceRule": {
+          "recurrenceType": "weekly",
+          "day": 9,
+          "basis": new Date("1990-02-07T22:50:34.680Z"),
+          "interval": 1
+        }
+      },
+      {
+        "name": "Sp16",
+        "amount": -739685584,
+        "recurrenceRule": {
+          "recurrenceType": "monthly",
+          "day": 3
         }
       }
     ];
@@ -254,8 +265,64 @@ Deno.test("Multiple recurring transactions that map to scheduled transactions on
       await client.addRecurringTransaction(rt);
     }
 
-    let startDate = new Date("Thu Mar 27 1990 22:51:24 GMT-0500");
-    let endDate = new Date("Fri Mar 29 1990 04:42:13 GMT-0500");
+    let startDate = new Date("Mon Jun 04 1990 16:28:03 GMT-0400");
+    let endDate = new Date("Mon Dec 03 1990 10:07:06 GMT-0500");
+
+    model.viewScheduledTransactions(startDate, endDate);
+    await client.viewScheduledTransactions(startDate, endDate);
+
+    console.log({clientSts: client.scheduledTransactions, modelSts: model.scheduledTransactions});
+
+    assertEquals(client.scheduledTransactions, model.scheduledTransactions);
+  });
+
+  await client.teardown();
+});
+
+Deno.test("Stress test for secondary sort for multiple scheduled transactions on same day", async (t) => {
+  let model = new Budget();
+  let client = new Client();
+
+  await client.setup();
+
+  await t.step("they should have a secondary sort on name", async () => {
+    // Mb4K and "Sp16" expand to the same day on 10/03/1990.
+    let rts = [
+      {
+        "name": "`!Jkay",
+        "amount": -1165528244,
+        "recurrenceRule": {
+          "recurrenceType": "monthly",
+          "day": 21
+        }
+      },
+      {
+        "name": "Mh1Z0",
+        "amount": -37287576,
+        "recurrenceRule": {
+          "recurrenceType": "weekly",
+          "day": 14,
+          "basis": new Date("1990-06-30T09:05:58.651Z"),
+          "interval": 10
+        }
+      },
+      {
+        "name": "Sp16",
+        "amount": -739685584,
+        "recurrenceRule": {
+          "recurrenceType": "monthly",
+          "day": 3
+        }
+      }
+    ];
+
+    for (const rt of rts) {
+      model.addRecurringTransaction(rt);
+      await client.addRecurringTransaction(rt);
+    }
+
+    let startDate = new Date("Fri Mar 23 1990 16:03:39 GMT-0500");
+    let endDate = new Date("Fri Jun 22 1990 15:32:11 GMT-0400");
 
     model.viewScheduledTransactions(startDate, endDate);
     await client.viewScheduledTransactions(startDate, endDate);
@@ -316,7 +383,7 @@ Deno.test("Schedule transaction boundary dates", async (t) => {
       "recurrenceRule": {
         "recurrenceType": "weekly",
         "day": 27,
-        "basis": "1990-11-11T19:22:51.755Z",
+        "basis": new Date("1990-11-11T19:22:51.755Z"),
         "interval": 6
       }
     };
@@ -326,6 +393,39 @@ Deno.test("Schedule transaction boundary dates", async (t) => {
 
     let startDate = new Date("Wed May 09 1990 15:33:36 GMT-0400");
     let endDate = new Date("Mon Aug 20 1990 22:36:55 GMT-0400");
+
+    model.viewScheduledTransactions(startDate, endDate);
+    await client.viewScheduledTransactions(startDate, endDate);
+
+    console.log({clientSts: client.scheduledTransactions, modelSts: model.scheduledTransactions});
+
+    assertEquals(client.scheduledTransactions, model.scheduledTransactions);
+  });
+
+  await client.teardown();
+});
+
+Deno.test("Another scheduled transaction boundary date", async (t) => {
+  let model = new Budget();
+  let client = new Client();
+
+  await client.setup();
+
+  await t.step("they should all be correct", async () => {
+    let rt = {
+      "name": "\\d+Cr",
+      "amount": -334756084,
+      "recurrenceRule": {
+        "recurrenceType": "monthly",
+        "day": 9
+      }
+    };
+
+    model.addRecurringTransaction(rt);
+    await client.addRecurringTransaction(rt);
+
+    let startDate = new Date("Fri Aug 03 1990 12:01:08 GMT-0400");
+    let endDate = new Date("Tue Oct 09 1990 08:05:42 GMT-0400");
 
     model.viewScheduledTransactions(startDate, endDate);
     await client.viewScheduledTransactions(startDate, endDate);

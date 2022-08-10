@@ -61,7 +61,6 @@ function recurringTransactionFromCreate(id: number, crt: CreateRecurringTransact
         let basis: DateString | null = null;
         if (crt.recurrenceRule.basis) {
             basis = dateStringFromDate(crt.recurrenceRule.basis);
-            console.log("Set basis", basis);
         }
           
         return { id, ...crt, recurrenceRule: { ...crt.recurrenceRule, basis } }
@@ -78,11 +77,8 @@ interface ScheduledTransaction {
 
 function doesWeeklyRuleApply(d: Date, rule: WeeklyRecurrence): boolean {    
     if (rule.interval && rule.basis) {
-        let normalizedDateStr = dateStringFromDate(d);
-        let normalizedDate = new Date(normalizedDateStr);
         let basisDate = new Date(rule.basis);
-        let dayDelta = Math.floor((normalizedDate.getTime() + (normalizedDate.getTimezoneOffset() * 60 * 1000) - basisDate.getTime() + (basisDate.getTimezoneOffset() * 60 * 1000) ) / (1000 * 3600 * 24));
-
+        let dayDelta = Math.floor((d.getTime() + (d.getTimezoneOffset() * 60 * 1000) - basisDate.getTime() + (basisDate.getTimezoneOffset() * 60 * 1000) ) / (1000 * 3600 * 24));
 
         return (dayDelta / 7.0) % rule.interval == 0;
     }
@@ -103,9 +99,12 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
         return [];
     }
 
+    let normalizedStart = new Date(dateStringFromDate(startDt));
+    let normalizedEnd = new Date(dateStringFromDate(endDt));
+
     let datesInRange: Date[] = [];
-    let currDt = startDt;
-    while (currDt < endDt) {
+    let currDt = normalizedStart;
+    while (currDt <= normalizedEnd) { 
         datesInRange.push(currDt);
 
         // Advance by 1 day
@@ -113,6 +112,7 @@ function expandRecurringTransaction(rt: RecurringTransaction, startDt: Date, end
         currDt = new Date(currDt);
         currDt.setDate(date + 1);
     }
+
 
     return datesInRange.filter((d) => {
         switch (rt.recurrenceRule.recurrenceType) {
@@ -153,8 +153,7 @@ export class Budget {
             } else if (d2.date < d1.date) {
                 return 1;
             } else {
-                return 0;
-//                return d1.name.localeCompare(d2.name);
+                return d1.name.localeCompare(d2.name);
             }
         });
 

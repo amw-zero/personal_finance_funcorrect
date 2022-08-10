@@ -5,15 +5,8 @@ ScheduledTransaction = Struct.new(:date, :name, :amount) do
         return [];
     end
 
-    puts "Expanding: #{start_date} - #{end_date}"
-
-    puts start_date.upto(end_date).to_a
-    ret = start_date.upto(end_date)
+    start_date.upto(end_date)
       .select { |d| rt.recurrence_rule.applies?(d) }
       .map { |d| ScheduledTransaction.new(d, rt.name, rt.amount) }
-
-      puts "Done"
-
-      ret
   end
 end
