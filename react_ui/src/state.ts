@@ -64,7 +64,7 @@ export type CreateMonthlyRecurrence = {
 
 export type CreateRecurrenceRule = CreateWeeklyRecurrence | CreateMonthlyRecurrence;
 
-interface CreateRecurringTransaction {
+export interface CreateRecurringTransaction {
     name: string;
     amount: number;
     recurrenceRule: CreateRecurrenceRule;

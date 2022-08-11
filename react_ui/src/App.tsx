@@ -2,9 +2,11 @@ import React, { useEffect, useContext, useState } from 'react';
 import {observer} from 'mobx-react-lite'
 import {autorun, reaction} from 'mobx';
 import { ClientContext } from './clientContext'
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { CreateRecurringTransaction } from './state';
+import { Formik, Field } from 'formik';
 import { FormField } from './components/FormField';
 import { RadioGroup, RadioGroupOption } from './components/RadioGroup';
+import { TextInput } from './components/TextInput';
 
 import {
   BrowserRouter as Router,
@@ -15,44 +17,104 @@ import {
 } from "react-router-dom";
 import './App.css';
 
-interface FormValues {
+type FormValues = {
   name: string;
   amount: number;
+  recurrenceRule: {
+    recurrenceType: RecurrenceName;
+    day: number | null; 
+    basis: string;
+    interval: number | "";
+  }
 }
+
 interface RecurringTransactionFormProps {
   isActive: boolean;
   onCloseRecurringTransactionForm: () => void;
 }
 
-type RecurrenceName = "recurrenceType.weekly" | "recurrenceType.monthly";
+type RecurrenceName = "monthly" | "weekly";
 
 function renderRecurrenceTypeFields(recurrenceType: RecurrenceName) {
   switch (recurrenceType) {
-  case "recurrenceType.weekly": return (
+  case "weekly": return (
     <FormField>
-      "Monthly"
+      <TextInput name="recurrenceRule.day" label="Day of week" type="number" />
+      <TextInput name="recurrenceRule.interval" label="Interval" type="number" />
+      <label className="label">Occurs on</label>
+      <Field name="recurrenceRule.basis" className="mt-4 mb-4" type="date" />
     </FormField>
   );
-  case "recurrenceType.monthly": return (
+  case "monthly": return (
     <FormField>
-      "Other"
+      <TextInput name="recurrenceRule.day" label="Day of month" type="number" />
     </FormField>
   );
+  }
+}
+
+function formatDateStr(ds: string): Date {
+  let options: Intl.DateTimeFormatOptions = {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+  },
+  formatter = new Intl.DateTimeFormat([], options);
+
+  return new Date(formatter.format(new Date(ds)));
+}
+
+function createRecurringTransFromFormValues(values: FormValues): CreateRecurringTransaction | null {
+  console.log("Converting values", values);
+  switch (values.recurrenceRule.recurrenceType) {
+    case "monthly":
+      if (values.recurrenceRule.day === null) {
+        return null;
+      }
+
+      return { name: values.name, amount: values.amount, recurrenceRule: { recurrenceType: "monthly", day: values.recurrenceRule.day } }
+    case "weekly":
+      let basisDate: Date | null = null;
+      let intervalNumber: number | null = null;
+      if (values.recurrenceRule.interval) {
+        intervalNumber = values.recurrenceRule.interval;
+      }
+
+      if (values.recurrenceRule.basis) {
+        basisDate = formatDateStr(values.recurrenceRule.basis);
+      }
+
+      return {
+        name: values.name,
+        amount: values.amount,
+        recurrenceRule: {
+          recurrenceType: "weekly",
+          day: 1,
+          interval: intervalNumber,
+          basis: basisDate,
+        }
+      };
   }
 }
 
 function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }: RecurringTransactionFormProps) {
   const client = useContext(ClientContext);
   
-  const [recurrenceType, setRecurrenceType] = useState<RecurrenceName>("recurrenceType.monthly");
-  const selectRecurrenceType = (o: RadioGroupOption) => setRecurrenceType(o.name as RecurrenceName );
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceName>("monthly");
+  console.log({recurrenceType});
+  const selectRecurrenceType = (o: RadioGroupOption) => setRecurrenceType(o.value as RecurrenceName );
 
   const onSubmit = async (values: FormValues) => {
-    await client.addRecurringTransaction({
-      name: values.name,
-      amount: values.amount,
-      recurrenceRule: { recurrenceType: "weekly", day: 1, basis: new Date(), interval: 2 }
-    });
+    let data = createRecurringTransFromFormValues(values);
+    if (data === null) {
+      return;
+    }
+
+    await client.addRecurringTransaction(data);
     onCloseRecurringTransactionForm();
   };
 
@@ -67,8 +129,9 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
             <p className="modal-card-title">Create Recurring Transaction</p>
             <button className="delete" aria-label="close" onClick={onCloseRecurringTransactionForm}></button>
           </header>
-          <Formik initialValues={{ name: '', amount: 0 }} onSubmit={onSubmit}>
-            {({handleSubmit, handleChange, handleBlur, values}) => (
+          <Formik<FormValues> initialValues={{ name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date).toString() }}} onSubmit={onSubmit}>
+            {({handleSubmit, handleChange, handleBlur, values}) => {
+              return (
               <section className="modal-card-body">
               <form onSubmit={handleSubmit}>
                 <FormField>
@@ -90,61 +153,22 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
                   <RadioGroup 
                     options={[
                       {
-                        name: "recurrenceType.monthly",
-                        label: "Monthly"
+                        name: "recurrenceRule.recurrenceType",
+                        label: "Monthly",
+                        value: "monthly"
                       },
                       {
-                        name: "recurrenceType.weekly",
-                        label: "Weekly"
+                        name: "recurrenceRule.recurrenceType",
+                        label: "Weekly",
+                        value: "weekly",
                       }
                     ]}
                     onSelectOption={selectRecurrenceType}
+                    handleChange={handleChange}
                   />
                 </FormField>
 
                 {renderRecurrenceTypeFields(recurrenceType)}
-
-                {/*
-                <div className="field">
-                  <label className="label">Username</label>
-                  <div className="control has-icons-left has-icons-right">
-                    <input className="input is-success" type="text" placeholder="Text input" value="bulma" />
-                    <span className="icon is-small is-left">
-                      <i className="fas fa-user"></i>
-                    </span>
-                    <span className="icon is-small is-right">
-                      <i className="fas fa-check"></i>
-                    </span>
-                  </div>
-                  <p className="help is-success">This username is available</p>
-                </div>
-
-                <div className="field">
-                  <label className="label">Email</label>
-                  <div className="control has-icons-left has-icons-right">
-                    <input className="input is-danger" type="email" placeholder="Email input" value="hello@" />
-                    <span className="icon is-small is-left">
-                      <i className="fas fa-envelope"></i>
-                    </span>
-                    <span className="icon is-small is-right">
-                      <i className="fas fa-exclamation-triangle"></i>
-                    </span>
-                  </div>
-                  <p className="help is-danger">This email is invalid</p>
-                </div>
-
-                <div className="field">
-                  <label className="label">Subject</label>
-                  <div className="control">
-                    <div className="select">
-                      <select>
-                        <option>Select dropdown</option>
-                        <option>With options</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                */}
 
                 <div className="field is-grouped">
                   <div className="control">
@@ -156,7 +180,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
                 </div>
               </form>
               </section>
-            )}
+          )}}
           </Formik>
         </div>
       </div>
@@ -167,6 +191,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
 
 const RecurringTransactionList = observer(() => {
   const client = useContext(ClientContext);
+
   useEffect(
     () => autorun(() => {
       console.log("Fetching recurring transactions");
@@ -295,7 +320,9 @@ function App() {
   const [showingRecurringTransactionForm, setShowingRecurringTransactionForm] = useState(false);
   return (
     <>
-      <RecurringTransactionForm isActive={showingRecurringTransactionForm} onCloseRecurringTransactionForm={() => setShowingRecurringTransactionForm(false)}/>
+      {showingRecurringTransactionForm && (
+        <RecurringTransactionForm isActive={showingRecurringTransactionForm} onCloseRecurringTransactionForm={() => setShowingRecurringTransactionForm(false)}/>
+      )}
       <Router>
       <Routes>
         <Route path="/" element={<Layout onShowRecurringTransactionForm={() => setShowingRecurringTransactionForm(true)}/>}>
