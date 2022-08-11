@@ -105,7 +105,6 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
   const client = useContext(ClientContext);
   
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceName>("monthly");
-  console.log({recurrenceType});
   const selectRecurrenceType = (o: RadioGroupOption) => setRecurrenceType(o.value as RecurrenceName );
 
   const onSubmit = async (values: FormValues) => {
@@ -284,8 +283,6 @@ const ScheduledTransactionList = observer(() => {
   const [startDate, setStartDate] = useState<string>(monthStart);
   const [endDate, setEndDate] = useState<string>(monthEnd);
 
-  console.log({endDate})
-
   useEffect(
     () => reaction(
       () => client.recurringTransactions,
@@ -312,6 +309,8 @@ const ScheduledTransactionList = observer(() => {
         <label className="label">End date</label>
         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
       </div>
+
+      <p>Sum: {client.scheduledTransactions.reduce((a, st) => a + st.amount, 0)}</p>
 
       <table className="table">
         <thead>
