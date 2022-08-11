@@ -1,11 +1,5 @@
 type DateString = string;
 
-function getDateStringTime(ds: DateString): number {
-    let d = new Date(ds);
-
-    return d.getTime();
-}
-
 function dateStringFromDate(d: Date): DateString {
     let month = (d.getMonth() + 1).toString().padStart(2, "0");
     let day = d.getDate().toString().padStart(2, "0");

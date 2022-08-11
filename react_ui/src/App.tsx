@@ -54,7 +54,7 @@ function renderRecurrenceTypeFields(recurrenceType: RecurrenceName) {
   }
 }
 
-function formatDateStr(ds: string): Date {
+function datePickerStrToDate(ds: string): Date {
   let options: Intl.DateTimeFormatOptions = {
     timeZone: 'UTC',
     year: 'numeric',
@@ -70,7 +70,6 @@ function formatDateStr(ds: string): Date {
 }
 
 function createRecurringTransFromFormValues(values: FormValues): CreateRecurringTransaction | null {
-  console.log("Converting values", values);
   switch (values.recurrenceRule.recurrenceType) {
     case "monthly":
       if (values.recurrenceRule.day === null) {
@@ -86,7 +85,7 @@ function createRecurringTransFromFormValues(values: FormValues): CreateRecurring
       }
 
       if (values.recurrenceRule.basis) {
-        basisDate = formatDateStr(values.recurrenceRule.basis);
+        basisDate = datePickerStrToDate(values.recurrenceRule.basis);
       }
 
       return {
@@ -250,24 +249,70 @@ const RecurringTransactionList = observer(() => {
   );
 });
 
+const DECEMBER = 11;
+
+function padTwoDigitNum(n: number): string {
+  return n.toString().padStart(2, "0");
+}
+function formatDateForDatePicker(d: Date): string {
+  let month = padTwoDigitNum(d.getMonth() + 1);
+  let day = padTwoDigitNum(d.getDate());
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+
+function currentMonthDates(): [string, string] {
+  let currDate = new Date();
+  let monthStart = new Date(currDate.getFullYear(), currDate.getMonth(), 1);
+  let currMonth = currDate.getMonth();
+
+  let nextMonthStart = new Date(currDate.getFullYear(), currDate.getMonth() + 1, 1);
+  if (currMonth == DECEMBER) {
+    nextMonthStart.setFullYear(currDate.getFullYear() + 1);
+  }
+
+  let monthEnd = new Date(nextMonthStart.getTime() - 1 * 1000 * 3600 * 24)
+
+  return [formatDateForDatePicker(monthStart), formatDateForDatePicker(monthEnd)];
+}
+
 const ScheduledTransactionList = observer(() => {
   const client = useContext(ClientContext);
+
+  let [monthStart, monthEnd] = currentMonthDates();
+
+  const [startDate, setStartDate] = useState<string>(monthStart);
+  const [endDate, setEndDate] = useState<string>(monthEnd);
+
+  console.log({endDate})
 
   useEffect(
     () => reaction(
       () => client.recurringTransactions,
-      () => client.viewScheduledTransactions(new Date("July 1 2022"), new Date("July 31 2022"))
+      () => client.viewScheduledTransactions(datePickerStrToDate(startDate), datePickerStrToDate(endDate))
     ), 
     []
   );
 
   useEffect(
-    () => autorun(() => client.viewScheduledTransactions(new Date("July 1 2022"), new Date("July 31 2022"))),
-    []
+    () => autorun(() => client.viewScheduledTransactions(datePickerStrToDate(startDate), datePickerStrToDate(endDate))),
+    [startDate, endDate]
   );
 
   return (
     <Container>
+      <div className="is-flex is-justify-content-center">
+        <div className="is-flex is-align-items-center">
+          <label className="label">Start date</label>
+          <input type="date" value={startDate} onChange={(e) => {
+            setStartDate(e.target.value)
+          }} />
+        </div>
+
+        <label className="label">End date</label>
+        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+      </div>
+
       <table className="table">
         <thead>
           <tr>
