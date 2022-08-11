@@ -2,7 +2,7 @@ import React, { useEffect, useContext, useState } from 'react';
 import {observer} from 'mobx-react-lite'
 import {autorun, reaction} from 'mobx';
 import { ClientContext } from './clientContext'
-import { CreateRecurringTransaction } from './state';
+import { CreateRecurringTransaction, RecurrenceRule } from './state';
 import { Formik, Field } from 'formik';
 import { FormField } from './components/FormField';
 import { RadioGroup, RadioGroupOption } from './components/RadioGroup';
@@ -16,6 +16,7 @@ import {
   Outlet
 } from "react-router-dom";
 import './App.css';
+import { Container } from './components/Container';
 
 type FormValues = {
   name: string;
@@ -129,7 +130,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
             <p className="modal-card-title">Create Recurring Transaction</p>
             <button className="delete" aria-label="close" onClick={onCloseRecurringTransactionForm}></button>
           </header>
-          <Formik<FormValues> initialValues={{ name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date).toString() }}} onSubmit={onSubmit}>
+          <Formik<FormValues> initialValues={{ name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date()).toString() }}} onSubmit={onSubmit}>
             {({handleSubmit, handleChange, handleBlur, values}) => {
               return (
               <section className="modal-card-body">
@@ -189,6 +190,19 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
   );
 }
 
+function displayRecurrenceRule(rule: RecurrenceRule) {
+  switch (rule.recurrenceType) {
+    case "monthly":
+      return `Monthly, on ${rule.day}`;
+    case "weekly":
+      if (rule.interval !== null && rule.basis !== null) {
+        return `Every ${rule.interval} weeks, starting on ${rule.basis}`;
+      }
+      
+      return `Weekly, on ${rule.day}`;
+  }
+}
+
 const RecurringTransactionList = observer(() => {
   const client = useContext(ClientContext);
 
@@ -200,8 +214,9 @@ const RecurringTransactionList = observer(() => {
     []
   );
   
-  return <>
-    <table className="table">
+  return (
+    <Container>
+      <table className="table">
         <thead>
           <tr>
             <th>Name</th>
@@ -212,12 +227,13 @@ const RecurringTransactionList = observer(() => {
           {client.recurringTransactions.map(rt => (
             <tr key={rt.id}>
               <td>{rt.name}</td>
-              <td>{rt.recurrenceRule.recurrenceType}</td>
+              <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-  </>
+    </Container>
+  );
 });
 
 const ScheduledTransactionList = observer(() => {
@@ -237,7 +253,7 @@ const ScheduledTransactionList = observer(() => {
   );
 
   return (
-    <>
+    <Container>
       <table className="table">
         <thead>
           <tr>
@@ -256,7 +272,7 @@ const ScheduledTransactionList = observer(() => {
           ))}
         </tbody>
       </table>
-    </>
+    </Container>
   );
 });
 
@@ -309,8 +325,10 @@ function Layout({ onShowRecurringTransactionForm }: LayoutProps) {
   return (
     <>
       <Navbar onShowRecurringTransactionForm={onShowRecurringTransactionForm}/>
-      <div className="container">
-        <Outlet />
+      <div className="columns is-centered">
+        <div className="column is-half">
+          <Outlet />
+        </div>
       </div>
     </>
   )
@@ -336,4 +354,3 @@ function App() {
 }
 
 export default App;
-

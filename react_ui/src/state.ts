@@ -12,7 +12,7 @@ type MonthlyRecurrence = {
     day: number;
 }
 
-type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
+export type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
 
 interface RecurringTransaction {
     id: number;
