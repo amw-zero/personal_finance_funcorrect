@@ -190,13 +190,27 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
   );
 }
 
+function displayWeekDay(dateStr: string): string {
+  let date = new Date(dateStr);
+
+  return [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+  ][date.getDay()];
+}
+
 function displayRecurrenceRule(rule: RecurrenceRule) {
   switch (rule.recurrenceType) {
     case "monthly":
       return `Monthly, on ${rule.day}`;
     case "weekly":
       if (rule.interval !== null && rule.basis !== null) {
-        return `Every ${rule.interval} weeks, starting on ${rule.basis}`;
+        return `Every ${rule.interval} weeks on ${displayWeekDay(rule.basis)}`;
       }
       
       return `Weekly, on ${rule.day}`;
