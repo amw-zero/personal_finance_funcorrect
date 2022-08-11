@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Prompts for password:
+createuser -P -d personal_finance
