@@ -232,6 +232,7 @@ const RecurringTransactionList = observer(() => {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Amount</th>
             <th>Recurrence Rule</th>
           </tr>
         </thead>
@@ -239,6 +240,7 @@ const RecurringTransactionList = observer(() => {
           {client.recurringTransactions.map(rt => (
             <tr key={rt.id}>
               <td>{rt.name}</td>
+              <td>{rt.amount}</td>
               <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
             </tr>
           ))}
