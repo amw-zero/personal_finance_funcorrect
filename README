@@ -1,0 +1,42 @@
+# Functional Correctness via Model-based Testing
+
+This is an experiment with using model-based testing as the primary testing method on an application. The actual application is a simple one for tracking recurring bills with different recurrence rules (think monthly, biweekly, etc.).
+
+A specific type of model-based testing is used here, where a reference model is built in the same language as the client-side state manager. Some design choices are made to make this simpler, such as using MobX to make that state manager observable and have state changes automatically rendered in the UI.
+
+# Setup
+
+Start the web server:
+
+```
+cd rails_api
+rails s
+```
+
+In a new terminal tab, start the frontend:
+
+```
+cd react_ui
+npm start
+```
+
+# Testing
+
+Start the web server in the test environment:
+
+```
+cd rails_api
+RAILS_ENV=test rails s
+```
+
+Run the model-based test command:
+
+```
+./test
+```
+
+There are also some specific test cases that can be run with:
+
+```
+./testexamples
+```
