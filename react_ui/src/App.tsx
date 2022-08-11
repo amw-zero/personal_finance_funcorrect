@@ -228,7 +228,7 @@ const RecurringTransactionList = observer(() => {
   
   return (
     <Container>
-      <table className="table">
+      <table className="table full-width">
         <thead>
           <tr>
             <th>Name</th>
@@ -298,26 +298,39 @@ const ScheduledTransactionList = observer(() => {
 
   return (
     <Container>
-      <div className="is-flex is-justify-content-center">
-        <div className="is-flex is-align-items-center">
-          <label className="label">Start date</label>
-          <input type="date" value={startDate} onChange={(e) => {
-            setStartDate(e.target.value)
-          }} />
-        </div>
+      <div className="block">
+        <div className="columns is-v-centered">
+          <div className="column has-text-centered">
+            <label className="label">Start date</label>
+            <input type="date" value={startDate} onChange={(e) => {
+              setStartDate(e.target.value)
+            }} />
+          </div>
 
-        <label className="label">End date</label>
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div className="column has-text-centered">
+            <label className="label">End date</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+        </div>
       </div>
 
-      <p>Sum: {client.scheduledTransactions.reduce((a, st) => a + st.amount, 0)}</p>
+      <div className="block">
+        <div className="is-flex is-justify-content-center">
+          <div className="notification full-width has-text-centered">
+            <span>
+            <label className="label mr-2">Sum:</label>
+            {client.scheduledTransactions.reduce((a, st) => a + st.amount, 0)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      <table className="table">
+      <table className="table full-width has-text-centered">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Amount</th>
-            <th>Date</th>
+            <th className="has-text-centered">Name</th>
+            <th className="has-text-centered">Amount</th>
+            <th className="has-text-centered">Date</th>
           </tr>
         </thead>
         <tbody>
