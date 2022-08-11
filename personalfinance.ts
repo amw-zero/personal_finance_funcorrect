@@ -38,6 +38,7 @@ interface ScheduledTransaction {
 }
 
 // Section -- UI Interface
+
 export interface CreateWeeklyRecurrence {
   recurrenceType: "weekly";
   interval: number | null;
@@ -159,14 +160,14 @@ export class Budget {
   }
 
   viewScheduledTransactions(start: Date, end: Date) {
-      let expanded = this.recurringTransactions.flatMap(rt => 
-        expandRecurringTransaction(rt, start, end).map(d => (
-          { date: dateStringFromDate(d), name: rt.name, amount: rt.amount }
-        )));
-      
-      expanded.sort(compareScheduledTransactions);
+    let expanded = this.recurringTransactions.flatMap(rt =>
+      expandRecurringTransaction(rt, start, end).map(d => (
+        { date: dateStringFromDate(d), name: rt.name, amount: rt.amount }
+      )));
 
-      this.scheduledTransactions = expanded;
+    expanded.sort(compareScheduledTransactions);
+
+    this.scheduledTransactions = expanded;
   }
 
   genId(type: string): number {
