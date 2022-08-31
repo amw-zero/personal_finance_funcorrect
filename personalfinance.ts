@@ -31,7 +31,7 @@ interface RecurringTransaction {
   recurrenceRule: RecurrenceRule;
 }
 
-interface ScheduledTransaction {
+export interface ScheduledTransaction {
   date: string;
   name: string;
   amount: number;
