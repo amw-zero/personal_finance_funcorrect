@@ -250,7 +250,7 @@ type RecurringTransactionLimitProps = {
   onClickRow: (rt: RecurringTransaction) => void
 }
 
-const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionLimitProps) => {
+const RecurringTransactionList = ({ onClickRow }: RecurringTransactionLimitProps) => {
   const client = useContext(ClientContext);
 
   useEffect(
@@ -279,7 +279,7 @@ const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionL
       </table>
     </Container>
   );
-});
+};
 
 const DECEMBER = 11;
 
