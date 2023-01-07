@@ -152,25 +152,29 @@ function serializeRecurringTransaction(crt: CreateRecurringTransaction) {
   }
 }
 
-function serializeRecurringTransactionEdit(rt: EditRecurringTransaction) {
-  switch (rt.recurrenceRule.recurrenceType) {
+function serializeRecurringTransactionEdit(ert: EditRecurringTransaction) {
+  switch (ert.recurrenceRule.recurrenceType) {
     case "monthly": return JSON.stringify({
-      name: rt.name,
-      amount: rt.amount,
+      name: ert.name,
+      amount: ert.amount,
       recurrence_rule: {
         recurrence_type: "monthly",
-        day: rt.recurrenceRule.day,
+        day: ert.recurrenceRule.day,
       }
     });
     case "weekly":
+      let basisDate: string | null = null;
+      if (ert.recurrenceRule.basis) {
+        basisDate = serializeDate(ert.recurrenceRule.basis);
+      }
       return JSON.stringify({
-        name: rt.name,
-        amount: rt.amount,
+        name: ert.name,
+        amount: ert.amount,
         recurrence_rule: {
           recurrence_type: "weekly",
-          day: rt.recurrenceRule.day,
-          interval: rt.recurrenceRule.interval,
-          basis: rt.recurrenceRule.basis,
+          day: ert.recurrenceRule.day,
+          interval: ert.recurrenceRule.interval,
+          basis: basisDate,
         }
       });
   }
