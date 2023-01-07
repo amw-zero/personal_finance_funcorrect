@@ -186,6 +186,16 @@ export class Budget {
     this.recurringTransactions.sort(compareRecurringTransactions);
   }
 
+  deleteRecurringTransaction(id: number) {
+    const idx = this.recurringTransactions.findIndex(currRt => currRt.id === id);
+    if (idx === -1) {
+      this.error = "Not found"
+      return;
+    }
+
+    this.recurringTransactions.splice(idx, 1);
+  }
+
   viewScheduledTransactions(start: Date, end: Date) {
     let expanded = this.recurringTransactions.flatMap(rt =>
       expandRecurringTransaction(rt, start, end).map(d => (

@@ -94,9 +94,14 @@ interface AppError {
   message: string;
 }
 
+interface DeleteRecurringTransactionJson {
+  type: "recurring_transactions_delete_success";
+}
+
 type RecurringTransactionResponse = RecurringTransactionJson | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
 type ScheduledTransactionsResponse = ScheduledTransactions | AppError
+type DeleteRecurringTransactionResponse = DeleteRecurringTransactionJson | AppError
 
 const API_HOST = "http://localhost:3000";
 
@@ -219,6 +224,19 @@ export class Client {
     this.updateEditedRecurringTransaction(await resp.json());
   }
 
+  async deleteRecurringTransaction(id: number) {
+    this.updateLoading(true);
+
+    let resp = await fetch(`${API_HOST}/recurring_transactions/${id}`, {
+      method: "DELETE",
+      headers: {
+        'Content-Type': "application/json",
+      },
+    });
+
+    this.updateDeletedRecurringTransaction(id, await resp.json());
+  }
+
   async viewRecurringTransactions() {
     this.updateLoading(true);
     let resp = await fetch(`${API_HOST}/recurring_transactions`);
@@ -281,6 +299,25 @@ export class Client {
         const rtIdx = this.recurringTransactions.findIndex(rt => rt.id === json.id);
         if (rtIdx !== -1) {
           this.recurringTransactions[rtIdx] = normalizeRecurringTransaction(json);
+        } else {
+          this.error = "Attempted to edit unknown recurring txn index";
+        }
+        break;
+      case "error":
+        this.error = json.message;
+        break;
+      default:
+        console.log("Default was hit when updating new recurring transaction")
+    };
+  }
+
+  updateDeletedRecurringTransaction(id: number, json: DeleteRecurringTransactionResponse) {
+    this.loading = false;
+    switch (json.type) {
+      case "recurring_transactions_delete_success":
+        const rtIdx = this.recurringTransactions.findIndex(rt => rt.id === id);
+        if (rtIdx !== -1) {
+          this.recurringTransactions.splice(rtIdx, 1);
         } else {
           this.error = "Attempted to edit unknown recurring txn index";
         }

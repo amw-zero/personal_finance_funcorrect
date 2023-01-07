@@ -25,6 +25,16 @@ class RecurringTransactionsController < ApplicationController
     end
   end
 
+  def destroy
+    rt = RecurringTransaction.find(params[:id])
+
+    if rt.destroy
+      render json: { type: 'recurring_transaction', message: 'success' }
+    else
+      render json: { type: 'error', message: rt.errors }
+    end
+  end
+
   private
 
   def serialize_recurrence_rule(rr)

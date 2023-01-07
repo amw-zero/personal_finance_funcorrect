@@ -35,6 +35,21 @@ class EditRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client>
   toString = () => `editRecurringTransaction`;
 }
 
+class DeleteRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> {
+  constructor(readonly id: number) {}
+  check = (m: Readonly<Budget>) => true;
+  async run(b: Budget, c: Client): Promise<void> {
+    console.log("  [Action] editRecurringTransaction");
+    console.group();
+    console.log(this.id);
+    console.groupEnd();
+
+    b.deleteRecurringTransaction(this.id);
+    await c.deleteRecurringTransaction(this.id);
+  }
+  toString = () => `editRecurringTransaction`;
+}
+
 class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
   constructor() {}
   check = (m: Readonly<Budget>) => true;
@@ -98,7 +113,10 @@ Deno.test("functional correctness", async (t) => {
           interval: fc.option(fc.integer({min: 1, max: 60})) 
         })
       ),
-    }).map(ert => new EditRecurringTransactionCommand(ert))
+    }).map(ert => new EditRecurringTransactionCommand(ert)),
+    fc.record({ 
+      id: fc.integer({ min: 1, max: 10 }),
+    }).map(ert => new DeleteRecurringTransactionCommand(ert))
   ];
 
   await fc.assert(
