@@ -59,6 +59,10 @@ interface CreateRecurringTransaction {
   recurrenceRule: CreateRecurrenceRule;
 }
 
+interface EditRecurringTransaction extends CreateRecurringTransaction {
+  id: number;
+}
+
 function recurringTransactionFromCreate(id: number, crt: CreateRecurringTransaction): RecurringTransaction {
   switch (crt.recurrenceRule.recurrenceType) {
   case "weekly":
@@ -157,6 +161,17 @@ export class Budget {
 
   viewRecurringTransactions(): RecurringTransaction[] {
     return this.recurringTransactions;
+  }
+
+  editRecurringTransaction(ert: EditRecurringTransaction) {
+    const idx = this.recurringTransactions.findIndex(currRt => currRt.id === ert.id);
+    if (idx === -1) {
+      this.error = "Not found"
+      return;
+    }
+
+    const newRt = recurringTransactionFromCreate(ert.id, ert);
+    this.recurringTransactions[idx] = newRt;
   }
 
   viewScheduledTransactions(start: Date, end: Date) {
