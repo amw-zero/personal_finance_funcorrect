@@ -59,6 +59,10 @@ interface CreateRecurringTransaction {
   recurrenceRule: CreateRecurrenceRule;
 }
 
+interface EditRecurringTransaction extends CreateRecurringTransaction {
+  id: number;
+}
+
 function recurringTransactionFromCreate(id: number, crt: CreateRecurringTransaction): RecurringTransaction {
   switch (crt.recurrenceRule.recurrenceType) {
   case "weekly":
@@ -144,6 +148,16 @@ function compareScheduledTransactions(st1: ScheduledTransaction, st2: ScheduledT
   }
 }
 
+function compareRecurringTransactions(rt1: RecurringTransaction, rt2: RecurringTransaction): number {
+  if (rt2.name > rt1.name) {
+    return -1;
+  } else if (rt2.name < rt1.name) {
+    return 1;
+  } else {
+    return rt1.name.localeCompare(rt2.name);
+  }
+}
+
 export class Budget {
   recurringTransactions: RecurringTransaction[] = [];
   scheduledTransactions: ScheduledTransaction[] = [];
@@ -157,6 +171,19 @@ export class Budget {
 
   viewRecurringTransactions(): RecurringTransaction[] {
     return this.recurringTransactions;
+  }
+
+  editRecurringTransaction(ert: EditRecurringTransaction) {
+    const idx = this.recurringTransactions.findIndex(currRt => currRt.id === ert.id);
+    if (idx === -1) {
+      this.error = "Not found"
+      return;
+    }
+
+    const newRt = recurringTransactionFromCreate(ert.id, ert);
+    this.recurringTransactions[idx] = newRt;
+
+    this.recurringTransactions.sort(compareRecurringTransactions);
   }
 
   viewScheduledTransactions(start: Date, end: Date) {

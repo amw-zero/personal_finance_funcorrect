@@ -14,7 +14,7 @@ type MonthlyRecurrence = {
 
 export type RecurrenceRule = WeeklyRecurrence | MonthlyRecurrence
 
-interface RecurringTransaction {
+export interface RecurringTransaction {
   id: number;
   name: string;
   amount: number;
@@ -65,6 +65,13 @@ export type CreateMonthlyRecurrence = {
 export type CreateRecurrenceRule = CreateWeeklyRecurrence | CreateMonthlyRecurrence;
 
 export interface CreateRecurringTransaction {
+  name: string;
+  amount: number;
+  recurrenceRule: CreateRecurrenceRule;
+}
+
+export interface EditRecurringTransaction {
+  id: number;
   name: string;
   amount: number;
   recurrenceRule: CreateRecurrenceRule;
@@ -145,6 +152,34 @@ function serializeRecurringTransaction(crt: CreateRecurringTransaction) {
   }
 }
 
+function serializeRecurringTransactionEdit(ert: EditRecurringTransaction) {
+  switch (ert.recurrenceRule.recurrenceType) {
+    case "monthly": return JSON.stringify({
+      name: ert.name,
+      amount: ert.amount,
+      recurrence_rule: {
+        recurrence_type: "monthly",
+        day: ert.recurrenceRule.day,
+      }
+    });
+    case "weekly":
+      let basisDate: string | null = null;
+      if (ert.recurrenceRule.basis) {
+        basisDate = serializeDate(ert.recurrenceRule.basis);
+      }
+      return JSON.stringify({
+        name: ert.name,
+        amount: ert.amount,
+        recurrence_rule: {
+          recurrence_type: "weekly",
+          day: ert.recurrenceRule.day,
+          interval: ert.recurrenceRule.interval,
+          basis: basisDate,
+        }
+      });
+  }
+}
+
 export class Client {
   recurringTransactions: RecurringTransaction[] = [];
   scheduledTransactions: ScheduledTransaction[] = [];
@@ -168,6 +203,20 @@ export class Client {
     });
 
     this.updateNewRecurringTransaction(await resp.json());
+  }
+
+  async editRecurringTransaction(rt: EditRecurringTransaction) {
+    this.updateLoading(true);
+
+    let resp = await fetch(`${API_HOST}/recurring_transactions/${rt.id}`, {
+      method: "PUT",
+      body: serializeRecurringTransactionEdit(rt),
+      headers: {
+        'Content-Type': "application/json",
+      },
+    });
+
+    this.updateEditedRecurringTransaction(await resp.json());
   }
 
   async viewRecurringTransactions() {
@@ -222,6 +271,25 @@ export class Client {
         break;
       default:
         console.log("Default was hit when updating recurring transactions")
+    };
+  }
+
+  updateEditedRecurringTransaction(json: RecurringTransactionResponse) {
+    this.loading = false;
+    switch (json.type) {
+      case "recurring_transaction":
+        const rtIdx = this.recurringTransactions.findIndex(rt => rt.id === json.id);
+        if (rtIdx !== -1) {
+          this.recurringTransactions[rtIdx] = normalizeRecurringTransaction(json);
+        } else {
+          this.error = "Attempted to edit unknown recurring txn index";
+        }
+        break;
+      case "error":
+        this.error = json.message;
+        break;
+      default:
+        console.log("Default was hit when updating new recurring transaction")
     };
   }
 

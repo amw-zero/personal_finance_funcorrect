@@ -2,7 +2,7 @@ import React, { useEffect, useContext, useState } from 'react';
 import {observer} from 'mobx-react-lite'
 import {autorun, reaction} from 'mobx';
 import { ClientContext } from './clientContext'
-import { CreateRecurringTransaction, RecurrenceRule } from './state';
+import { CreateRecurringTransaction, RecurringTransaction, RecurrenceRule } from './state';
 import { Formik, Field } from 'formik';
 import { FormField } from './components/FormField';
 import { RadioGroup, RadioGroupOption } from './components/RadioGroup';
@@ -18,7 +18,7 @@ import {
 import './App.css';
 import { Container } from './components/Container';
 
-type FormValues = {
+type RecurringTransactionFormValues = {
   name: string;
   amount: number;
   recurrenceRule: {
@@ -30,8 +30,10 @@ type FormValues = {
 }
 
 interface RecurringTransactionFormProps {
-  isActive: boolean;
+  isActive: boolean;  
   onCloseRecurringTransactionForm: () => void;
+  initialValues?: RecurringTransactionFormValues;
+  editingTransactionId?: number;
 }
 
 type RecurrenceName = "monthly" | "weekly";
@@ -69,7 +71,7 @@ function datePickerStrToDate(ds: string): Date {
   return new Date(formatter.format(new Date(ds)));
 }
 
-function createRecurringTransFromFormValues(values: FormValues): CreateRecurringTransaction | null {
+function createRecurringTransFromRecurringTransactionFormValues(values: RecurringTransactionFormValues): CreateRecurringTransaction | null {
   switch (values.recurrenceRule.recurrenceType) {
     case "monthly":
       if (values.recurrenceRule.day === null) {
@@ -101,14 +103,14 @@ function createRecurringTransFromFormValues(values: FormValues): CreateRecurring
   }
 }
 
-function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }: RecurringTransactionFormProps) {
+function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive, initialValues, editingTransactionId }: RecurringTransactionFormProps) {
   const client = useContext(ClientContext);
   
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceName>("monthly");
   const selectRecurrenceType = (o: RadioGroupOption) => setRecurrenceType(o.value as RecurrenceName );
 
-  const onSubmit = async (values: FormValues) => {
-    let data = createRecurringTransFromFormValues(values);
+  const onCreateSubmit = async (values: RecurringTransactionFormValues) => {
+    let data = createRecurringTransFromRecurringTransactionFormValues(values);
     if (data === null) {
       return;
     }
@@ -117,7 +119,21 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
     onCloseRecurringTransactionForm();
   };
 
+  const onEditSubmit = async (values: RecurringTransactionFormValues) => {
+    let data = createRecurringTransFromRecurringTransactionFormValues(values);
+    if (data === null) {
+      return;
+    }
+
+    await client.editRecurringTransaction({...data, id: editingTransactionId!});
+    onCloseRecurringTransactionForm();
+  };
+
+  const submitFunc = editingTransactionId ? onEditSubmit : onCreateSubmit;
+
   let classnames = `modal ${isActive ? "is-active": ""}`;
+
+  const initValues = initialValues ?? { name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date()).toString() }};
 
   return (
     <>
@@ -128,7 +144,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive }:
             <p className="modal-card-title">Create Recurring Transaction</p>
             <button className="delete" aria-label="close" onClick={onCloseRecurringTransactionForm}></button>
           </header>
-          <Formik<FormValues> initialValues={{ name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date()).toString() }}} onSubmit={onSubmit}>
+          <Formik<RecurringTransactionFormValues> initialValues={initValues} onSubmit={submitFunc}>
             {({handleSubmit, handleChange, handleBlur, values}) => {
               return (
               <section className="modal-card-body">
@@ -215,7 +231,26 @@ function displayRecurrenceRule(rule: RecurrenceRule) {
   }
 }
 
-const RecurringTransactionList = observer(() => {
+type RecurringTransactionRowProps = {
+  recurringTransaction: RecurringTransaction;
+  onClickRow: (rt: RecurringTransaction) => void;
+}
+
+const RecurringTransactionRow = ({ recurringTransaction: rt, onClickRow }: RecurringTransactionRowProps) => {
+  return (
+    <tr className="recurring-transaction-row" key={rt.id} onClick={() => onClickRow(rt)} >
+      <td>{rt.name}</td>
+      <td>{rt.amount}</td>
+      <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
+    </tr>
+  )
+}
+
+type RecurringTransactionLimitProps = {
+  onClickRow: (rt: RecurringTransaction) => void
+}
+
+const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionLimitProps) => {
   const client = useContext(ClientContext);
 
   useEffect(
@@ -225,8 +260,8 @@ const RecurringTransactionList = observer(() => {
     }), 
     []
   );
-  
-  return (
+
+   return (
     <Container>
       <table className="table full-width">
         <thead>
@@ -238,11 +273,7 @@ const RecurringTransactionList = observer(() => {
         </thead>
         <tbody>
           {client.recurringTransactions.map(rt => (
-            <tr key={rt.id}>
-              <td>{rt.name}</td>
-              <td>{rt.amount}</td>
-              <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
-            </tr>
+            <RecurringTransactionRow recurringTransaction={rt} onClickRow={onClickRow} />
           ))}
         </tbody>
       </table>
@@ -407,17 +438,111 @@ function Layout({ onShowRecurringTransactionForm }: LayoutProps) {
   )
 }
 
+const editInitValues = (rt: RecurringTransaction): RecurringTransactionFormValues | null => {
+  switch (rt.recurrenceRule.recurrenceType) {
+    case "monthly":
+      return { 
+        name: rt.name, 
+        amount: rt.amount, 
+        recurrenceRule: { 
+          recurrenceType: "monthly", 
+          day: rt.recurrenceRule.day, 
+          interval: "",
+          basis: "",
+        }
+      }
+    case "weekly":
+      return { 
+        name: rt.name, 
+        amount: rt.amount, 
+        recurrenceRule: { 
+          recurrenceType: "weekly", 
+          day: rt.recurrenceRule.day, 
+          interval: rt.recurrenceRule.interval ?? "", 
+          basis: rt.recurrenceRule.basis ?? "", 
+        }
+      }
+  }
+
+  return null;
+}
+
+type RecurringTransactionActionMenuProps = {
+  isActive: boolean
+  recurringTransaction: RecurringTransaction
+  onClickEdit: () => void
+  onClose: () => void
+}
+
+function RecurringTransactionActionMenu({ isActive, recurringTransaction, onClickEdit, onClose }: RecurringTransactionActionMenuProps) {
+  const classnames = `modal ${isActive ? "is-active": ""}`;
+
+  return (
+    <>
+       <div className={classnames}>
+        <div className="modal-background"></div>
+        <div className="modal-card">
+          <header className="modal-card-head">
+            <p className="modal-card-title">Recurring Transaction Action</p>
+            <button className="delete" aria-label="close" onClick={onClose}></button>
+          </header>
+          <section className="modal-card-body">
+            <button className="button is-warning" onClick={onClickEdit}>
+              Edit
+            </button>
+          </section>
+        </div>
+      </div>
+    </>
+  )
+}
+
 function App() {
   const [showingRecurringTransactionForm, setShowingRecurringTransactionForm] = useState(false);
+  const [showingRecurringTransactionActionMenu, setShowingRecurringTransactionActionMenu] = useState(false);
+  const [showingEditRecurringTransactionForm, setShowingEditRecurringTransactionForm] = useState(false);
+  const [actionRecurringTransaction, setActionRecurringTransaction] = useState<RecurringTransaction | null>(null);
+
+  const onClickRecurringTransaction = (recurringTransaction: RecurringTransaction) => {
+    setShowingRecurringTransactionActionMenu(true);
+    setActionRecurringTransaction(recurringTransaction);
+  }
+
+  const onClickEditTransaction = () => {
+    setShowingEditRecurringTransactionForm(true);
+    setShowingRecurringTransactionActionMenu(false);
+  }
+
+  const closeEditTransactionForm = () => {
+    setShowingEditRecurringTransactionForm(false);
+    setActionRecurringTransaction(null);
+  }
+
   return (
     <>
       {showingRecurringTransactionForm && (
         <RecurringTransactionForm isActive={showingRecurringTransactionForm} onCloseRecurringTransactionForm={() => setShowingRecurringTransactionForm(false)}/>
       )}
+      {showingEditRecurringTransactionForm && actionRecurringTransaction && (
+        <RecurringTransactionForm 
+          editingTransactionId={actionRecurringTransaction.id}
+          initialValues={editInitValues(actionRecurringTransaction)!}
+          isActive={showingEditRecurringTransactionForm}
+          onCloseRecurringTransactionForm={closeEditTransactionForm}
+        />
+      )}
+      {showingRecurringTransactionActionMenu && actionRecurringTransaction && (
+        <RecurringTransactionActionMenu 
+          isActive={showingRecurringTransactionActionMenu} 
+          recurringTransaction={actionRecurringTransaction} 
+          onClickEdit={onClickEditTransaction}
+          onClose={() => setShowingRecurringTransactionActionMenu(false) }
+        />
+      )}
       <Router>
       <Routes>
         <Route path="/" element={<Layout onShowRecurringTransactionForm={() => setShowingRecurringTransactionForm(true)}/>}>
-          <Route path="/" element={<RecurringTransactionList />} />
+          <Route path="/" element={<RecurringTransactionList onClickRow={onClickRecurringTransaction}/>} />
           <Route path="/scheduled-transactions" element={<ScheduledTransactionList />} /> 
         </Route>
       </Routes>

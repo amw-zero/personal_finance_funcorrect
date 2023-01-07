@@ -15,8 +15,14 @@ class RecurringTransactionsController < ApplicationController
     end
   end
 
-  def recurring_transaction_params
-    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrence_type, :day, :basis, :interval])
+  def update
+    rt = RecurringTransaction.find(params[:id])
+
+    if rt.update(recurring_transaction_params)
+      render json: serialize_recurring_transaction(rt)
+    else
+      render json: { type: 'error', message: rt.errors }
+    end
   end
 
   private
@@ -43,5 +49,10 @@ class RecurringTransactionsController < ApplicationController
       amount: rt.amount,
       recurrence_rule: serialize_recurrence_rule(rt.recurrence_rule),
     }
+  end
+
+  
+  def recurring_transaction_params
+    params.require(:recurring_transaction).permit(:amount, :name, recurrence_rule: [:recurrence_type, :day, :basis, :interval])
   end
 end

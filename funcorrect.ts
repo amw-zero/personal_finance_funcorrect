@@ -1,4 +1,4 @@
-import { Client, CreateRecurringTransaction } from './react_ui/src/state.ts';
+import { Client, CreateRecurringTransaction, EditRecurringTransaction } from './react_ui/src/state.ts';
 import { Budget } from "./personalfinance.ts"
 
 import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
@@ -18,6 +18,21 @@ class AddRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> 
     await c.addRecurringTransaction(this.crt);
   }
   toString = () => `addRecurringTransaction`;
+}
+
+class EditRecurringTransactionCommand implements fc.AsyncCommand<Budget, Client> {
+  constructor(readonly ert: EditRecurringTransaction) {}
+  check = (m: Readonly<Budget>) => true;
+  async run(b: Budget, c: Client): Promise<void> {
+    console.log("  [Action] editRecurringTransaction");
+    console.group();
+    console.log(JSON.stringify(this.ert, null, 2));
+    console.groupEnd();
+
+    b.editRecurringTransaction(this.ert);
+    await c.editRecurringTransaction(this.ert);
+  }
+  toString = () => `editRecurringTransaction`;
 }
 
 class ViewRecurringTransactionsCommand implements fc.AsyncCommand<Budget, Client> {
@@ -64,11 +79,26 @@ Deno.test("functional correctness", async (t) => {
         })
       ) 
     }).map(crt => new AddRecurringTransactionCommand(crt)),
+    // Edit both existing and non-existing records
     fc.constant(new ViewRecurringTransactionsCommand()),
     fc.record({ 
       start: fc.date({min: dateMin, max: dateMax}),
       end: fc.date({min: dateMin, max: dateMax}), 
     }).map(({ start, end }) => new ViewScheduledTransactionsCommand(start, end)),
+    fc.record({ 
+      id: fc.integer({ min: 1, max: 10 }),
+      name: fc.string(), 
+      amount: fc.integer(), 
+      recurrenceRule: fc.oneof(
+        fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+        fc.record({ 
+          recurrenceType: fc.constant("weekly"), 
+          day: fc.integer({min: 0, max: 31 }), 
+          basis: fc.option(fc.date({min: dateMin, max: dateMax})),
+          interval: fc.option(fc.integer({min: 1, max: 60})) 
+        })
+      ),
+    }).map(ert => new EditRecurringTransactionCommand(ert))
   ];
 
   await fc.assert(
