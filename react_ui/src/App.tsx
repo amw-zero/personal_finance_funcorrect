@@ -236,7 +236,7 @@ type RecurringTransactionRowProps = {
   onClickRow: (rt: RecurringTransaction) => void;
 }
 
-const RecurringTransactionRow = observer(({ recurringTransaction: rt, onClickRow }: RecurringTransactionRowProps) => {
+const RecurringTransactionRow = ({ recurringTransaction: rt, onClickRow }: RecurringTransactionRowProps) => {
   return (
     <tr className="recurring-transaction-row" key={rt.id} onClick={() => onClickRow(rt)} >
       <td>{rt.name}</td>
@@ -244,13 +244,13 @@ const RecurringTransactionRow = observer(({ recurringTransaction: rt, onClickRow
       <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
     </tr>
   )
-})
+}
 
 type RecurringTransactionLimitProps = {
   onClickRow: (rt: RecurringTransaction) => void
 }
 
-const RecurringTransactionList = ({ onClickRow }: RecurringTransactionLimitProps) => {
+const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionLimitProps) => {
   const client = useContext(ClientContext);
 
   useEffect(
@@ -279,7 +279,7 @@ const RecurringTransactionList = ({ onClickRow }: RecurringTransactionLimitProps
       </table>
     </Container>
   );
-};
+});
 
 const DECEMBER = 11;
 
