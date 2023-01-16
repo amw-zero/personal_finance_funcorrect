@@ -6,6 +6,9 @@ class RecurringTransactionsController < ApplicationController
   end
 
   def create
+    puts "[RecurringTransactionsController] params: #{params}"
+    puts
+    puts "[RecurringTransactionsController] string params: #{recurring_transaction_params}"
     rt = RecurringTransaction.new(recurring_transaction_params)
 
     if rt.save
@@ -29,7 +32,7 @@ class RecurringTransactionsController < ApplicationController
     rt = RecurringTransaction.find(params[:id])
 
     if rt.destroy
-      render json: { type: 'recurring_transaction', message: 'success' }
+      render json: { type: 'recurring_transactions_delete_success' }
     else
       render json: { type: 'error', message: rt.errors }
     end

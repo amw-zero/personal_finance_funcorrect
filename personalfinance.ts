@@ -2,7 +2,7 @@
 
 type DateString = string;
 
-function dateStringFromDate(d: Date): DateString {
+export function dateStringFromDate(d: Date): DateString {
   let month = (d.getMonth() + 1).toString().padStart(2, "0");
   let day = d.getDate().toString().padStart(2, "0");
   let year = d.getFullYear().toString();
@@ -167,6 +167,13 @@ export class Budget {
 
   addRecurringTransaction(crt: CreateRecurringTransaction) {
     this.recurringTransactions.push(recurringTransactionFromCreate(this.genId("RecurringTransaction"), crt));
+  }
+
+  // For test setup - adds a recurring transaction with an existing ID
+  // Compiler can generate this?
+  addTestRecurringTransaction(rt: RecurringTransaction) {
+//    const { id, ...crt } = rt;
+    this.recurringTransactions.push(rt);
   }
 
   viewRecurringTransactions(): RecurringTransaction[] {

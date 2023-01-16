@@ -122,14 +122,14 @@ function normalizeRecurringTransaction(json: RecurringTransactionJson): Recurrin
   }
 }
 
-function serializeDate(d: Date): string {
+export function serializeDate(d: Date): string {
   let month = (d.getMonth() + 1).toString().padStart(2, "0");
   let day = d.getDate().toString().padStart(2, "0");
   let year = d.getFullYear().toString();
   return `${year}-${month}-${day}`;
 }
 
-function serializeRecurringTransaction(crt: CreateRecurringTransaction) {
+function serializeCreateRecurringTransaction(crt: CreateRecurringTransaction) {
   switch (crt.recurrenceRule.recurrenceType) {
     case "monthly": return JSON.stringify({
       name: crt.name,
@@ -185,6 +185,50 @@ function serializeRecurringTransactionEdit(ert: EditRecurringTransaction) {
   }
 }
 
+function serializeCreateDBRecurringTransaction(rt: RecurringTransaction) {
+  switch (rt.recurrenceRule.recurrenceType) {
+    case "monthly": return {
+      id: rt.id,
+      name: rt.name,
+      amount: rt.amount,
+      recurrence_rule: {
+        recurrence_type: "monthly",
+        day: rt.recurrenceRule.day,
+      }
+    };
+    case "weekly":
+      let basisDate: Date | null = null;
+      if (rt.recurrenceRule.basis) {
+        const [month, day, year] = rt.recurrenceRule.basis.split("/").map((dateComponent: string) => parseInt(dateComponent, 10));
+        basisDate = new Date(year, month - 1, day);
+      }
+
+      return {
+        id: rt.id,
+        name: rt.name,
+        amount: rt.amount,
+        recurrence_rule: {
+          recurrence_type: "weekly",
+          day: rt.recurrenceRule.day,
+          interval: rt.recurrenceRule.interval,
+          basis: basisDate,
+        }
+      };
+  }
+}
+
+function serializeDBState(db: DBState) {
+  return JSON.stringify({
+    state: {
+      recurring_transactions: db.recurring_transactions.map(serializeCreateDBRecurringTransaction)
+    }
+  });
+}
+
+export type DBState = { 
+  recurring_transactions: RecurringTransaction[] 
+}
+
 export class Client {
   recurringTransactions: RecurringTransaction[] = [];
   scheduledTransactions: ScheduledTransaction[] = [];
@@ -201,7 +245,7 @@ export class Client {
 
     let resp = await fetch(`${API_HOST}/recurring_transactions`, {
       method: "POST",
-      body: serializeRecurringTransaction(crt),
+      body: serializeCreateRecurringTransaction(crt),
       headers: {
         'Content-Type': "application/json",
       },
@@ -251,10 +295,15 @@ export class Client {
     this.updateScheduledTransactions(await resp.json());
   }
 
-  async setup() {
+  async setup(db: DBState) {
+    console.log("[State] setup - sending DB state")
     return fetch(`${API_HOST}/setup`, {
-      method: "POST",
-    });
+        method: "POST",
+        body: serializeDBState(db),
+        headers: {
+          'Content-Type': "application/json",
+        },
+      });
   }
 
   async teardown() {
@@ -313,11 +362,13 @@ export class Client {
 
   updateDeletedRecurringTransaction(id: number, json: DeleteRecurringTransactionResponse) {
     this.loading = false;
+    console.log("Delete response: ", { json })
     switch (json.type) {
       case "recurring_transactions_delete_success":
         const rtIdx = this.recurringTransactions.findIndex(rt => rt.id === id);
         if (rtIdx !== -1) {
-          this.recurringTransactions.splice(rtIdx, 1);
+          const rtId = this.recurringTransactions[rtIdx].id;
+          this.recurringTransactions = this.recurringTransactions.filter(rt => rt.id !== rtId);
         } else {
           this.error = "Attempted to edit unknown recurring txn index";
         }
@@ -326,7 +377,7 @@ export class Client {
         this.error = json.message;
         break;
       default:
-        console.log("Default was hit when updating new recurring transaction")
+        console.log("Default was hit when deleting recurring transaction")
     };
   }
 

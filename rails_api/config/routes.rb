@@ -4,6 +4,4 @@ Rails.application.routes.draw do
 
   post :setup, to: 'test#setup'
   post :teardown, to: 'test#teardown'
-
-  get '/404', to: 'errors#not_found'
 end
