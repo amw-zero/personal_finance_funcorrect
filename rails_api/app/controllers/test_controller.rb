@@ -11,6 +11,7 @@ class TestController < ApplicationController
 
     state_params.each do |model, value|
       lookup_model_klass(model).create!(value)
+      ActiveRecord::Base.connection.reset_pk_sequence!(model)
     end
 
     puts "[TestController] created data: #{RecurringTransaction.all.to_a.to_s}"

@@ -251,7 +251,7 @@ export class Client {
       },
     });
 
-    this.updateNewRecurringTransaction(await resp.json());
+    return this.updateNewRecurringTransaction(await resp.json());
   }
 
   async editRecurringTransaction(rt: EditRecurringTransaction) {
@@ -312,11 +312,12 @@ export class Client {
     });
   }
 
-  updateNewRecurringTransaction(json: RecurringTransactionResponse) {
+  async updateNewRecurringTransaction(json: RecurringTransactionResponse) {
     this.loading = false;
     switch (json.type) {
       case "recurring_transaction":
-        this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
+        await this.viewRecurringTransactions();
+//        this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
         break;
       case "error":
         this.error = json.message;

@@ -1,3 +1,5 @@
+import { Client } from './react_ui/src/state.ts';
+
 // Section -- Core data model
 
 type DateString = string;
@@ -163,17 +165,15 @@ export class Budget {
   scheduledTransactions: ScheduledTransaction[] = [];
   error: string | null = null;
 
+  // The client is an auxiliary variable. It doesn't affect any behavior of the spec,
+  // but is necessary to build a refinement mapping. Might only be necessary in theory, 
+  // since it can exist in the test.
+  aux: Client = new Client();
+
   ids: Record<string, number> = {};
 
   addRecurringTransaction(crt: CreateRecurringTransaction) {
     this.recurringTransactions.push(recurringTransactionFromCreate(this.genId("RecurringTransaction"), crt));
-  }
-
-  // For test setup - adds a recurring transaction with an existing ID
-  // Compiler can generate this?
-  addTestRecurringTransaction(rt: RecurringTransaction) {
-//    const { id, ...crt } = rt;
-    this.recurringTransactions.push(rt);
   }
 
   viewRecurringTransactions(): RecurringTransaction[] {
