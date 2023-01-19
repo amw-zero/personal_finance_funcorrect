@@ -278,7 +278,7 @@ export class Client {
       },
     });
 
-    this.updateDeletedRecurringTransaction(id, await resp.json());
+    await this.updateDeletedRecurringTransaction(id, await resp.json());
   }
 
   async viewRecurringTransactions() {
@@ -360,18 +360,11 @@ export class Client {
     };
   }
 
-  updateDeletedRecurringTransaction(id: number, json: DeleteRecurringTransactionResponse) {
+  async updateDeletedRecurringTransaction(id: number, json: DeleteRecurringTransactionResponse) {
     this.loading = false;
-    console.log("Delete response: ", { json })
     switch (json.type) {
       case "recurring_transactions_delete_success":
-        const rtIdx = this.recurringTransactions.findIndex(rt => rt.id === id);
-        if (rtIdx !== -1) {
-          const rtId = this.recurringTransactions[rtIdx].id;
-          this.recurringTransactions = this.recurringTransactions.filter(rt => rt.id !== rtId);
-        } else {
-          this.error = "Attempted to edit unknown recurring txn index";
-        }
+        await this.viewRecurringTransactions();
         break;
       case "error":
         this.error = json.message;

@@ -12,74 +12,91 @@ const dateMax = new Date("1991-01-01T00:00:00.000Z");
 
 // runTests();
 
-// Deno.test("deleteRecurringTransaction", async (t) => {  
-//   let recurrenceRule = fc.oneof(
-//     fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
-//     fc.record({ 
-//       recurrenceType: fc.constant("weekly"), 
-//       day: fc.integer({min: 0, max: 31 }), 
-//       basis: fc.option(fc.date({min: dateMin, max: dateMax})),
-//       interval: fc.option(fc.integer({min: 1, max: 60})) 
-//     })
-//   );
+// Action State 
+type DeleteRecurringTransactionState = {
+  recurringTransactions: RecurringTransaction[];
+  id: number;
+  db: DBState;
+}
 
-//   let recurringTransaction = fc.record({
-//     id: fc.integer({ min: 1, max: 20 }),
-//     name: fc.string(),
-//     amount: fc.integer(),
-//     recurrenceRule:  recurrenceRule,
-//   });
+Deno.test("deleteRecurringTransaction", async (t) => {  
+  let recurrenceRule = fc.oneof(
+    fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+    fc.record({ 
+      recurrenceType: fc.constant("weekly"), 
+      day: fc.integer({min: 0, max: 31 }), 
+      basis: fc.option(fc.date({min: dateMin, max: dateMax}).map((d: Date) => dateStringFromDate(d))),
+      interval: fc.option(fc.integer({min: 1, max: 60})) 
+    })
+  );
 
-//   let recurringTransactions = fc.array(recurringTransaction);
+  let recurringTransaction = fc.record({
+    id: fc.integer({ min: 1, max: 20 }),
+    name: fc.string(),
+    amount: fc.integer(),
+    recurrenceRule:  recurrenceRule,
+  });
 
-//   let state = fc.record({
-//     recurringTransactions,
-//     id: fc.integer({ min: 1, max: 4 })
-//   });
+  let recurringTransactions = fc.uniqueArray(recurringTransaction, { selector: (v: RecurringTransaction) => v.id });
 
-//   function refinementMapping(impl: Client) {
-//     let model = new Budget();
-//     model.recurringTransactions = impl.recurringTransactions;
-//   }
+  // Relies on TestState.db = d => setup(DB, d) = d
+  let state = fc.record({
+    recurringTransactions,
+    id: fc.integer({ min: 1, max: 4 }),
+    db: fc.record({
+      recurring_transactions: recurringTransactions,
+    })
+  });
 
-//   await fc.assert(
-//     fc.asyncProperty(state, async (state: { recurringTransactions: RecurringTransaction[], id: number }) => {
-//       console.log("State", { state });
-//       let client = new Client();
+  await fc.assert(
+    fc.asyncProperty(state, async (state: DeleteRecurringTransactionState) => {
+      console.log("Delete state", JSON.stringify(state, null, 2));
+      let client = new Client();
 
-//       client.recurringTransactions = state.recurringTransactions;
-//       await client.setup();
+      client.recurringTransactions = state.recurringTransactions;
+      const cresp = await client.setup(state.db);
 
-//       let model = new Budget();
-//       model.recurringTransactions = state.recurringTransactions;
+      // Deno-specific fetch waiting
+      await cresp.arrayBuffer();
 
-//       await client.deleteRecurringTransaction(state.id);
-//       model.deleteRecurringTransaction(state.id);
+      let model = new Budget();
+      for (let rt of state.db.recurring_transactions) {
+        model.addTestRecurringTransaction(rt);
+      }
 
-//       await t.step("Checking invariants between model and implementation", async (t) => {
-//         await t.step("UI State", async (t) => {
-//           await t.step("loading", async () => {
-//             assertEquals(client.loading, false);
-//           })
-//           await t.step("error", async () => {
-//             assertEquals(client.error, model.error);
-//           });
-//         });
+      await client.deleteRecurringTransaction(state.id);
+      model.deleteRecurringTransaction(state.id);
 
-//         await t.step("Recurring transactions are equal", async () => {
-//           assertEquals(client.recurringTransactions, model.recurringTransactions);
-//         });
+      await t.step("Checking invariants between model and implementation", async (t) => {
+        await t.step("UI State", async (t) => {
+          await t.step("loading", async () => {
+            assertEquals(client.loading, false);
+          })
+          await t.step("error", async () => {
+            assertEquals(client.error, model.error);
+          });
+        });
 
-//         await t.step("Scheduled transactions are equal", async () => {
-//           assertEquals(client.scheduledTransactions, model.scheduledTransactions);
-//         });
-//       });
+        await t.step("Recurring transactions are equal", async () => {
+          if (model.error === null) {
+            // This forces a data sync after each action. This is a design decision,
+            // there are probably other reasonable choices.
+            assertEquals(client.recurringTransactions, model.recurringTransactions);
+          }
+        });
 
-//       await client.teardown();
-//     }),
-//     { numRuns: 1 }
-//   );
-// });
+        await t.step("Scheduled transactions are equal", async () => {
+          if (model.error === null) {
+            assertEquals(client.scheduledTransactions, model.scheduledTransactions);
+          }
+        });
+      });
+
+      await client.teardown();
+    }),
+    { numRuns: 100, endOnFailure: true }
+  );
+});
 
 
 // Action State 
@@ -175,6 +192,6 @@ Deno.test("viewRecurringTransactions", async (t) => {
         await client.teardown();
       }
     }),
-    { numRuns: 100 }
+    { numRuns: 100, endOnFailure: true }
   );
 });
