@@ -293,6 +293,9 @@ export class Client {
     let resp = await fetch(`${API_HOST}/scheduled_transactions?start_date=${serializeDate(start)}&end_date=${serializeDate(end)}`);
 
     this.updateScheduledTransactions(await resp.json());
+
+    // This is too harsh - can't update the full state on every action.
+    return this.viewRecurringTransactions();
   }
 
   async setup(db: DBState) {
