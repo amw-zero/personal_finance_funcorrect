@@ -31,12 +31,8 @@ class Impl  {
   }
 
   async deleteRecurringTransaction(id: number) {
-//    if (!this.budget.error && this.aux.clientBudget.recurringTransactions.map(rt => rt.id).includes(id)) {
     await this.client.deleteRecurringTransaction(id);
     this.aux.clientBudget.deleteRecurringTransaction(id);
-//    } else {
-//      this.aux.clientBudget.error = this.budget.error;
-//    }
   }
 }
 
