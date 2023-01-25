@@ -40,8 +40,6 @@ type AuxiliaryVariables = {
   clientBudget: Budget;
 }
 
-// The client state should be equivalent to the model if they both start in the same initial state
-
 function refinementMapping(impl: Impl): Budget {
   let budget = new Budget();
   budget.error = impl.client.error;
@@ -98,6 +96,7 @@ Deno.test("deleteRecurringTransaction", async (t) => {
 
       let clientBudget = new Budget();
       clientBudget.recurringTransactions = state.recurringTransactions;
+      // The client state should be equivalent to the model if they both start in the same initial state
       let impl = new Impl(state.db, client, { clientBudget });
       let model = refinementMapping(impl);
 
