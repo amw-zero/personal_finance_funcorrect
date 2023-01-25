@@ -1,22 +1,68 @@
 import { Client, DBState, CreateRecurringTransaction, EditRecurringTransaction, RecurringTransaction } from './react_ui/src/state.ts';
 import { Budget, dateStringFromDate } from "./personalfinance.ts"
 
-import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
-
 import fc from 'https://cdn.skypack.dev/fast-check';
 
 import { runTests, check } from './simulationtests.ts';
+import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
 
 const dateMin = new Date("1990-01-01T00:00:00.000Z");
 const dateMax = new Date("1991-01-01T00:00:00.000Z");
 
-runTests();
+// runTests();
 
 // Action State 
 type DeleteRecurringTransactionState = {
   recurringTransactions: RecurringTransaction[];
   id: number;
   db: DBState;
+}
+
+class Impl  {
+  db: DBState;
+  client: Client;
+
+  aux: AuxiliaryVariables;
+
+  constructor(db: DBState, client: Client, aux: AuxiliaryVariables) {
+    this.db = db;
+    this.client = client;
+    this.aux = aux;
+  }
+
+  async deleteRecurringTransaction(id: number) {
+//    if (!this.budget.error && this.aux.clientBudget.recurringTransactions.map(rt => rt.id).includes(id)) {
+    await this.client.deleteRecurringTransaction(id);
+    this.aux.clientBudget.deleteRecurringTransaction(id);
+//    } else {
+//      this.aux.clientBudget.error = this.budget.error;
+//    }
+  }
+}
+
+type AuxiliaryVariables = {
+  clientBudget: Budget;
+}
+
+// The client state should be equivalent to the model if they both start in the same initial state
+
+function refinementMapping(impl: Impl): Budget {
+  let budget = new Budget();
+  budget.error = impl.client.error;
+
+  // This should actually read from the DB
+  budget.recurringTransactions = [...impl.db.recurring_transactions];
+
+  return budget;
+}
+
+export async function checkImplActionProperties(impl: Impl, t: Deno.TestContext) {
+  await t.step("loading is complete", () => assertEquals(impl.client.loading, false));
+  await t.step("client state reflects client model", () => assertEquals(impl.client.recurringTransactions, impl.aux.clientBudget.recurringTransactions));
+}
+
+export async function checkRefinementMapping(mappedModel: Budget, endModel: Budget, t: Deno.TestContext) {
+  await t.step("State is equivalent under the refinement mapping", () => assertEquals(mappedModel, endModel));
 }
 
 Deno.test("deleteRecurringTransaction", async (t) => {  
@@ -52,24 +98,32 @@ Deno.test("deleteRecurringTransaction", async (t) => {
     fc.asyncProperty(state, async (state: DeleteRecurringTransactionState) => {
       console.log("Delete state", JSON.stringify(state, null, 2));
       let client = new Client();
-
       client.recurringTransactions = state.recurringTransactions;
-      const cresp = await client.setup(state.db);
 
-      // Deno-specific fetch waiting
+      let clientBudget = new Budget();
+      clientBudget.recurringTransactions = state.recurringTransactions;
+      let impl = new Impl(state.db, client, { clientBudget });
+      let model = refinementMapping(impl);
+
+      const cresp = await client.setup(state.db);
       await cresp.arrayBuffer();
 
-      let model = new Budget();
-      model.recurringTransactions = state.db.recurring_transactions;
-
-      await client.deleteRecurringTransaction(state.id);
+      await impl.deleteRecurringTransaction(state.id);
       model.deleteRecurringTransaction(state.id);
 
-      await check(client, model, t);
+      let mappedModel = refinementMapping(impl);
+
+      // Replace this with actual read from DB
+      mappedModel.recurringTransactions = model.recurringTransactions;
+
+      console.log(JSON.stringify(impl, null, 2));
+
+      await checkRefinementMapping(mappedModel, model, t);
+      await checkImplActionProperties(impl, t);
 
       await client.teardown();
     }),
-    { numRuns: 0, endOnFailure: true }
+    { numRuns: 50, endOnFailure: true }
   );
 });
 

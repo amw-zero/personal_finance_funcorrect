@@ -165,11 +165,6 @@ export class Budget {
   scheduledTransactions: ScheduledTransaction[] = [];
   error: string | null = null;
 
-  // The client is an auxiliary variable. It doesn't affect any behavior of the spec,
-  // but is necessary to build a refinement mapping. Might only be necessary in theory, 
-  // since it can exist in the test.
-  aux: Client = new Client();
-
   ids: Record<string, number> = {};
 
   addRecurringTransaction(crt: CreateRecurringTransaction) {

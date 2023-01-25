@@ -368,7 +368,12 @@ export class Client {
     this.loading = false;
     switch (json.type) {
       case "recurring_transactions_delete_success":
-        await this.viewRecurringTransactions();
+        const idx = this.recurringTransactions.findIndex(currRt => currRt.id === id);
+        if (idx === -1) {
+          return;
+        }
+
+        this.recurringTransactions.splice(idx, 1);
         break;
       case "error":
         this.error = json.message;

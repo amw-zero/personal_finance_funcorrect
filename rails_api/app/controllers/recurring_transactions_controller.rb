@@ -9,6 +9,7 @@ class RecurringTransactionsController < ApplicationController
     puts "[RecurringTransactionsController] params: #{params}"
     puts
     puts "[RecurringTransactionsController] string params: #{recurring_transaction_params}"
+    puts
     rt = RecurringTransaction.new(recurring_transaction_params)
 
     if rt.save
