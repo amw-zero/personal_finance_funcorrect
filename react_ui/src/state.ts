@@ -294,8 +294,8 @@ export class Client {
 
     this.updateScheduledTransactions(await resp.json());
 
-    // This is too harsh - can't update the full state on every action.
-    return this.viewRecurringTransactions();
+//    // This is too harsh - can't update the full state on every action.
+//    return this.viewRecurringTransactions();
   }
 
   async setup(db: DBState) {

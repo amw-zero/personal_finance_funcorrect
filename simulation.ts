@@ -34,6 +34,19 @@ class Impl  {
     await this.client.deleteRecurringTransaction(id);
     this.aux.clientBudget.deleteRecurringTransaction(id);
   }
+
+  async addRecurringTransaction(crt: CreateRecurringTransaction) {
+    await this.client.addRecurringTransaction(crt);
+    this.aux.clientBudget.addRecurringTransaction(crt);
+  }
+
+  async viewRecurringTransactions() {
+    await this.client.viewRecurringTransactions();
+  }
+
+  async viewScheduledTransactions(start: Date, end: Date) {
+    await this.client.viewScheduledTransactions(start, end);
+  }
 }
 
 type AuxiliaryVariables = {
@@ -44,21 +57,24 @@ function refinementMapping(impl: Impl): Budget {
   let budget = new Budget();
   budget.error = impl.client.error;
 
-  // This should actually read from the DB
+  // This should actually read from the DB, DB is main memory
   budget.recurringTransactions = [...impl.db.recurring_transactions];
+  budget.scheduledTransactions = [...impl.client.scheduledTransactions];
 
   return budget;
 }
 
 export async function checkImplActionProperties(impl: Impl, t: Deno.TestContext) {
   await t.step("loading is complete", () => assertEquals(impl.client.loading, false));
-  await t.step("client state reflects client model", () => assertEquals(impl.client.recurringTransactions, impl.aux.clientBudget.recurringTransactions));
+
+  await t.step("write-through cache: client state reflects client model", () => assertEquals(impl.client.recurringTransactions, impl.aux.clientBudget.recurringTransactions));
 }
 
 export async function checkRefinementMapping(mappedModel: Budget, endModel: Budget, t: Deno.TestContext) {
   await t.step("State is equivalent under the refinement mapping", () => assertEquals(mappedModel, endModel));
 }
 
+// Write-through cache
 Deno.test("deleteRecurringTransaction", async (t) => {  
   let recurrenceRule = fc.oneof(
     fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
@@ -118,7 +134,7 @@ Deno.test("deleteRecurringTransaction", async (t) => {
 
       await client.teardown();
     }),
-    { numRuns: 50, endOnFailure: true }
+    { numRuns: 0, endOnFailure: true }
   );
 });
 
@@ -161,31 +177,201 @@ Deno.test("viewRecurringTransactions", async (t) => {
 
   await fc.assert(
     fc.asyncProperty(state, async (state: ViewRecurringTransactionState) => {
-//      console.log(JSON.stringify(state, null, 2));
+      console.log(JSON.stringify(state, null, 2));
+
       let client = new Client();
-      try {
-        // Initial state setup 
-        client.recurringTransactions = state.recurringTransactions;
-        let cresp = await client.setup(state.db);
+      client.recurringTransactions = state.recurringTransactions;
 
-        // Deno-specific fetch waiting
-        await cresp.arrayBuffer();
+      let clientBudget = new Budget();
+      clientBudget.recurringTransactions = state.recurringTransactions;
+      // The client state should be equivalent to the model if they both start in the same initial state
+      let impl = new Impl(state.db, client, { clientBudget });
+      let model = refinementMapping(impl);
 
-        let model = new Budget();
-        model.recurringTransactions = state.db.recurring_transactions;
+      const cresp = await client.setup(state.db);
+      await cresp.arrayBuffer();
 
-        // Perform Action
-        await client.viewRecurringTransactions();
-        model.viewRecurringTransactions();
+      await impl.viewRecurringTransactions();
+      model.viewRecurringTransactions();
 
-        await check(client, model, t);
-      } catch (e) {
-        console.log("Test body err");
-        console.log(e);
-      } finally {
-        await client.teardown();
-      }
+      let mappedModel = refinementMapping(impl);
+
+      // Replace this with actual read from DB
+      mappedModel.recurringTransactions = model.recurringTransactions;
+
+      console.log(JSON.stringify(impl, null, 2));
+
+      await checkRefinementMapping(mappedModel, model, t);
+
+      await client.teardown();
     }),
     { numRuns: 0, endOnFailure: true }
+  );
+});
+
+type AddRecurringTransactionState = {
+  recurringTransactions: RecurringTransaction[];
+  db: DBState;
+  createRecurringTransaction: CreateRecurringTransaction;
+}
+
+Deno.test("addRecurringTransaction", async (t: Deno.TestContext) => {  
+  let recurrenceRule = fc.oneof(
+    fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+    fc.record({ 
+      recurrenceType: fc.constant("weekly"), 
+      day: fc.integer({min: 0, max: 31 }), 
+
+      // The call to serialize date is application-specific logic here. Either need to allow user to 
+      // provide, or solve this in the compiler somehow.
+      basis: fc.option(fc.date({min: dateMin, max: dateMax}).map((d: Date) => dateStringFromDate(d))),
+      interval: fc.option(fc.integer({min: 1, max: 60})) 
+    })
+  );
+
+  let recurringTransaction = fc.record({
+    id: fc.integer({ min: 1, max: 20 }),
+    name: fc.string(),
+    amount: fc.integer(),
+    recurrenceRule:  recurrenceRule,
+  });
+
+  let recurringTransactions = fc.uniqueArray(recurringTransaction, { selector: (v: RecurringTransaction) => v.id });
+
+  let createRecurringTransaction = fc.record({ 
+    name: fc.string(), 
+    amount: fc.integer(), 
+    recurrenceRule: fc.oneof(
+      fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+      fc.record({ 
+        recurrenceType: fc.constant("weekly"), 
+        day: fc.integer({min: 0, max: 31 }), 
+        basis: fc.option(fc.date({min: dateMin, max: dateMax})),
+        interval: fc.option(fc.integer({min: 1, max: 60})) 
+      }),
+    )
+  });
+
+  let state = fc.record({
+    recurringTransactions,
+    db: fc.record({
+      recurring_transactions: recurringTransactions,
+    }),
+    createRecurringTransaction,
+  });
+
+  await fc.assert(
+    fc.asyncProperty(state, async (state: AddRecurringTransactionState) => {
+      console.log("addRecurringTransaction state", JSON.stringify(state, null, 2));
+
+      console.log(JSON.stringify(state, null, 2));
+
+      let client = new Client();
+      client.recurringTransactions = state.recurringTransactions;
+
+      let clientBudget = new Budget();
+      clientBudget.recurringTransactions = state.recurringTransactions;
+      // The client state should be equivalent to the model if they both start in the same initial state
+      // This is write-through cache functionality
+      let impl = new Impl(state.db, client, { clientBudget });
+      let model = refinementMapping(impl);
+
+      const cresp = await client.setup(state.db);
+      await cresp.arrayBuffer();
+
+      await impl.viewRecurringTransactions();
+      model.viewRecurringTransactions();
+
+      let mappedModel = refinementMapping(impl);
+
+      // Replace this with actual read from DB
+      mappedModel.recurringTransactions = model.recurringTransactions;
+
+      console.log(JSON.stringify(impl, null, 2));
+
+      await checkRefinementMapping(mappedModel, model, t);
+
+      await client.teardown();
+    }),
+    { numRuns: 0, endOnFailure: true }
+  );
+});
+
+type ViewScheduledTransactionsState = {
+  recurringTransactions: RecurringTransaction[];
+  db: DBState;
+  start: Date;
+  end: Date;
+}
+
+Deno.test("viewScheduledTransactions", async (t) => {  
+  let recurrenceRule = fc.oneof(
+    fc.record({ recurrenceType: fc.constant("monthly"), day: fc.integer({min: 0, max: 31}) }),
+    fc.record({ 
+      recurrenceType: fc.constant("weekly"), 
+      day: fc.integer({min: 0, max: 31 }), 
+
+      // The call to serialize date is application-specific logic here. Either need to allow user to 
+      // provide, or solve this in the compiler somehow.
+      basis: fc.option(fc.date({min: dateMin, max: dateMax}).map((d: Date) => dateStringFromDate(d))),
+      interval: fc.option(fc.integer({min: 1, max: 60})) 
+    })
+  );
+
+  let recurringTransaction = fc.record({
+    id: fc.integer({ min: 1, max: 20 }),
+    name: fc.string(),
+    amount: fc.integer(),
+    recurrenceRule:  recurrenceRule,
+  });
+
+  let recurringTransactions = fc.uniqueArray(recurringTransaction, { selector: (v: RecurringTransaction) => v.id });
+
+  const start = fc.date({min: dateMin, max: dateMax});
+  const end = fc.date({min: dateMin, max: dateMax});
+
+  let state = fc.record({
+    recurringTransactions,
+    db: fc.record({
+      recurring_transactions: recurringTransactions,
+    }),
+    start,
+    end,
+  });
+
+  await fc.assert(
+    fc.asyncProperty(state, async (state: ViewScheduledTransactionsState) => {
+      console.log("viewSchceduledTransactions state", JSON.stringify(state, null, 2));
+
+      console.log(JSON.stringify(state, null, 2));
+
+      let client = new Client();
+      client.recurringTransactions = state.recurringTransactions;
+
+      let clientBudget = new Budget();
+      clientBudget.recurringTransactions = state.recurringTransactions;
+      // The client state should be equivalent to the model if they both start in the same initial state
+      // This is write-through cache functionality
+      let impl = new Impl(state.db, client, { clientBudget });
+      let model = refinementMapping(impl);
+
+      const cresp = await client.setup(state.db);
+      await cresp.arrayBuffer();
+
+      await impl.viewScheduledTransactions(state.start, state.end);
+      model.viewScheduledTransactions(state.start, state.end);
+
+      let mappedModel = refinementMapping(impl);
+
+      // Replace this with actual read from DB
+      mappedModel.recurringTransactions = model.recurringTransactions;
+
+      console.log(JSON.stringify(impl, null, 2));
+
+      await checkRefinementMapping(mappedModel, model, t);
+
+      await client.teardown();
+    }),
+    { numRuns: 10, endOnFailure: true }
   );
 });

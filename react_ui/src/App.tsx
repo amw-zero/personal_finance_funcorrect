@@ -1,6 +1,6 @@
 import React, { useEffect, useContext, useState } from 'react';
-import {observer} from 'mobx-react-lite'
-import {autorun, reaction} from 'mobx';
+import { observer } from 'mobx-react-lite'
+import { autorun } from 'mobx';
 import { ClientContext } from './clientContext'
 import { CreateRecurringTransaction, RecurringTransaction, RecurrenceRule } from './state';
 import { Formik, Field } from 'formik';
@@ -133,7 +133,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive, i
 
   let classnames = `modal ${isActive ? "is-active": ""}`;
 
-  const initValues = initialValues ?? { name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: (new Date()).toString() }};
+  const initValues = initialValues ?? { name: '', amount: 0, recurrenceRule: { recurrenceType: "monthly", day: 1, interval: "", basis: "" }};
 
   return (
     <>
@@ -238,7 +238,7 @@ type RecurringTransactionRowProps = {
 
 const RecurringTransactionRow = ({ recurringTransaction: rt, onClickRow }: RecurringTransactionRowProps) => {
   return (
-    <tr className="recurring-transaction-row" key={rt.id} onClick={() => onClickRow(rt)} >
+    <tr className="recurring-transaction-row" onClick={() => onClickRow(rt)} >
       <td>{rt.name}</td>
       <td>{rt.amount}</td>
       <td>{displayRecurrenceRule(rt.recurrenceRule)}</td>
@@ -257,8 +257,8 @@ const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionL
     () => autorun(() => {
       console.log("Fetching recurring transactions");
       client.viewRecurringTransactions()
-    }), 
-    []
+    }),
+    [client]
   );
 
    return (
@@ -273,7 +273,7 @@ const RecurringTransactionList = observer(({ onClickRow }: RecurringTransactionL
         </thead>
         <tbody>
           {client.recurringTransactions.map(rt => (
-            <RecurringTransactionRow recurringTransaction={rt} onClickRow={onClickRow} />
+            <RecurringTransactionRow key={rt.id} recurringTransaction={rt} onClickRow={onClickRow} />
           ))}
         </tbody>
       </table>
@@ -299,7 +299,7 @@ function currentMonthDates(): [string, string] {
   let currMonth = currDate.getMonth();
 
   let nextMonthStart = new Date(currDate.getFullYear(), currDate.getMonth() + 1, 1);
-  if (currMonth == DECEMBER) {
+  if (currMonth === DECEMBER) {
     nextMonthStart.setFullYear(currDate.getFullYear() + 1);
   }
 
@@ -317,16 +317,8 @@ const ScheduledTransactionList = observer(() => {
   const [endDate, setEndDate] = useState<string>(monthEnd);
 
   useEffect(
-    () => reaction(
-      () => client.recurringTransactions,
-      () => client.viewScheduledTransactions(datePickerStrToDate(startDate), datePickerStrToDate(endDate))
-    ), 
-    []
-  );
-
-  useEffect(
     () => autorun(() => client.viewScheduledTransactions(datePickerStrToDate(startDate), datePickerStrToDate(endDate))),
-    [startDate, endDate]
+    [client, client.recurringTransactions, startDate, endDate]
   );
 
   return (
@@ -389,11 +381,11 @@ function Navbar({ onShowRecurringTransactionForm }: NavbarProps) {
     <>
       <nav className="navbar" role="navigation" aria-label="main navigation">
         <div className="navbar-brand">
-          <a role="button" className="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+          <button className="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
             <span aria-hidden="true"></span>
-          </a>
+          </button>
         </div>
 
         <div id="navbarBasicExample" className="navbar-menu">
@@ -409,9 +401,9 @@ function Navbar({ onShowRecurringTransactionForm }: NavbarProps) {
           <div className="navbar-end">
             <div className="navbar-item">
               <div className="buttons">
-                <a className="button is-primary" onClick={() => onShowRecurringTransactionForm()}>
+                <button className="button is-primary" onClick={() => onShowRecurringTransactionForm()}>
                   <strong>Create Recurring Transaction</strong>
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -475,7 +467,14 @@ type RecurringTransactionActionMenuProps = {
 }
 
 function RecurringTransactionActionMenu({ isActive, recurringTransaction, onClickEdit, onClose }: RecurringTransactionActionMenuProps) {
+  const client = useContext(ClientContext);
+
   const classnames = `modal ${isActive ? "is-active": ""}`;
+
+  const onClickDelete = async () => {
+    await client.deleteRecurringTransaction(recurringTransaction.id);
+    onClose();
+  }
 
   return (
     <>
@@ -489,6 +488,9 @@ function RecurringTransactionActionMenu({ isActive, recurringTransaction, onClic
           <section className="modal-card-body">
             <button className="button is-warning" onClick={onClickEdit}>
               Edit
+            </button>
+            <button className="button is-danger" onClick={onClickDelete}>
+              Delete
             </button>
           </section>
         </div>
