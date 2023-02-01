@@ -293,9 +293,6 @@ export class Client {
     let resp = await fetch(`${API_HOST}/scheduled_transactions?start_date=${serializeDate(start)}&end_date=${serializeDate(end)}`);
 
     this.updateScheduledTransactions(await resp.json());
-
-//    // This is too harsh - can't update the full state on every action.
-//    return this.viewRecurringTransactions();
   }
 
   async setup(db: DBState) {
@@ -315,12 +312,23 @@ export class Client {
     });
   }
 
+  async dbstate(): Promise<RecurringTransaction[]> {
+    const resp = await fetch(`${API_HOST}/recurring_transactions`);
+    const json = await resp.json();
+
+    switch (json.type) {
+      case "recurring_transactions":
+        return json.recurring_transactions.map(normalizeRecurringTransaction);
+      default:
+        return [{ id: -1, name: "Error txn", amount: -1, recurrenceRule: { recurrenceType: "monthly", day: -1 } }];
+    };
+  }
+
   async updateNewRecurringTransaction(json: RecurringTransactionResponse) {
     this.loading = false;
     switch (json.type) {
       case "recurring_transaction":
-        await this.viewRecurringTransactions();
-//        this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
+        this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
         break;
       case "error":
         this.error = json.message;

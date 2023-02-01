@@ -3,13 +3,10 @@ import { Budget, dateStringFromDate } from "./personalfinance.ts"
 
 import fc from 'https://cdn.skypack.dev/fast-check';
 
-import { runTests, check } from './simulationtests.ts';
 import { assertEquals } from "https://deno.land/std@0.149.0/testing/asserts.ts";
 
 const dateMin = new Date("1990-01-01T00:00:00.000Z");
 const dateMax = new Date("1991-01-01T00:00:00.000Z");
-
-// runTests();
 
 // Action State 
 type DeleteRecurringTransactionState = {
@@ -18,7 +15,7 @@ type DeleteRecurringTransactionState = {
   db: DBState;
 }
 
-class Impl  {
+class Impl {
   db: DBState;
   client: Client;
 
@@ -32,12 +29,12 @@ class Impl  {
 
   async deleteRecurringTransaction(id: number) {
     await this.client.deleteRecurringTransaction(id);
-    this.aux.clientBudget.deleteRecurringTransaction(id);
+    this.aux.clientModel.deleteRecurringTransaction(id);
   }
 
   async addRecurringTransaction(crt: CreateRecurringTransaction) {
     await this.client.addRecurringTransaction(crt);
-    this.aux.clientBudget.addRecurringTransaction(crt);
+    this.aux.clientModel.addRecurringTransaction(crt);
   }
 
   async viewRecurringTransactions() {
@@ -50,7 +47,7 @@ class Impl  {
 }
 
 type AuxiliaryVariables = {
-  clientBudget: Budget;
+  clientModel: Budget;
 }
 
 function refinementMapping(impl: Impl): Budget {
@@ -67,7 +64,7 @@ function refinementMapping(impl: Impl): Budget {
 export async function checkImplActionProperties(impl: Impl, t: Deno.TestContext) {
   await t.step("loading is complete", () => assertEquals(impl.client.loading, false));
 
-  await t.step("write-through cache: client state reflects client model", () => assertEquals(impl.client.recurringTransactions, impl.aux.clientBudget.recurringTransactions));
+  await t.step("write-through cache: client state reflects client model", () => assertEquals(impl.client.recurringTransactions, impl.aux.clientModel.recurringTransactions));
 }
 
 export async function checkRefinementMapping(mappedModel: Budget, endModel: Budget, t: Deno.TestContext) {
@@ -106,14 +103,14 @@ Deno.test("deleteRecurringTransaction", async (t) => {
 
   await fc.assert(
     fc.asyncProperty(state, async (state: DeleteRecurringTransactionState) => {
-      console.log("Delete state", JSON.stringify(state, null, 2));
+//      console.log("Delete state", JSON.stringify(state, null, 2));
       let client = new Client();
       client.recurringTransactions = state.recurringTransactions;
 
-      let clientBudget = new Budget();
-      clientBudget.recurringTransactions = state.recurringTransactions;
+      let clientModel = new Budget();
+      clientModel.recurringTransactions = state.recurringTransactions;
       // The client state should be equivalent to the model if they both start in the same initial state
-      let impl = new Impl(state.db, client, { clientBudget });
+      let impl = new Impl(state.db, client, { clientModel });
       let model = refinementMapping(impl);
 
       const cresp = await client.setup(state.db);
@@ -122,19 +119,16 @@ Deno.test("deleteRecurringTransaction", async (t) => {
       await impl.deleteRecurringTransaction(state.id);
       model.deleteRecurringTransaction(state.id);
 
+      impl.db.recurring_transactions = await client.dbstate();
+
       let mappedModel = refinementMapping(impl);
-
-      // Replace this with actual read from DB
-      mappedModel.recurringTransactions = model.recurringTransactions;
-
-      console.log(JSON.stringify(impl, null, 2));
 
       await checkRefinementMapping(mappedModel, model, t);
       await checkImplActionProperties(impl, t);
 
       await client.teardown();
     }),
-    { numRuns: 0, endOnFailure: true }
+    { numRuns: 10, endOnFailure: true }
   );
 });
 
@@ -182,10 +176,10 @@ Deno.test("viewRecurringTransactions", async (t) => {
       let client = new Client();
       client.recurringTransactions = state.recurringTransactions;
 
-      let clientBudget = new Budget();
-      clientBudget.recurringTransactions = state.recurringTransactions;
+      let clientModel = new Budget();
+      clientModel.recurringTransactions = state.recurringTransactions;
       // The client state should be equivalent to the model if they both start in the same initial state
-      let impl = new Impl(state.db, client, { clientBudget });
+      let impl = new Impl(state.db, client, { clientModel });
       let model = refinementMapping(impl);
 
       const cresp = await client.setup(state.db);
@@ -194,10 +188,9 @@ Deno.test("viewRecurringTransactions", async (t) => {
       await impl.viewRecurringTransactions();
       model.viewRecurringTransactions();
 
-      let mappedModel = refinementMapping(impl);
+      impl.db.recurring_transactions = await client.dbstate();
 
-      // Replace this with actual read from DB
-      mappedModel.recurringTransactions = model.recurringTransactions;
+      let mappedModel = refinementMapping(impl);
 
       console.log(JSON.stringify(impl, null, 2));
 
@@ -205,7 +198,7 @@ Deno.test("viewRecurringTransactions", async (t) => {
 
       await client.teardown();
     }),
-    { numRuns: 0, endOnFailure: true }
+    { numRuns: 10, endOnFailure: true }
   );
 });
 
@@ -269,11 +262,11 @@ Deno.test("addRecurringTransaction", async (t: Deno.TestContext) => {
       let client = new Client();
       client.recurringTransactions = state.recurringTransactions;
 
-      let clientBudget = new Budget();
-      clientBudget.recurringTransactions = state.recurringTransactions;
+      let clientModel = new Budget();
+      clientModel.recurringTransactions = state.recurringTransactions;
       // The client state should be equivalent to the model if they both start in the same initial state
       // This is write-through cache functionality
-      let impl = new Impl(state.db, client, { clientBudget });
+      let impl = new Impl(state.db, client, { clientModel });
       let model = refinementMapping(impl);
 
       const cresp = await client.setup(state.db);
@@ -282,10 +275,9 @@ Deno.test("addRecurringTransaction", async (t: Deno.TestContext) => {
       await impl.viewRecurringTransactions();
       model.viewRecurringTransactions();
 
-      let mappedModel = refinementMapping(impl);
+      impl.db.recurring_transactions = await client.dbstate();
 
-      // Replace this with actual read from DB
-      mappedModel.recurringTransactions = model.recurringTransactions;
+      let mappedModel = refinementMapping(impl);
 
       console.log(JSON.stringify(impl, null, 2));
 
@@ -293,7 +285,7 @@ Deno.test("addRecurringTransaction", async (t: Deno.TestContext) => {
 
       await client.teardown();
     }),
-    { numRuns: 0, endOnFailure: true }
+    { numRuns: 10, endOnFailure: true }
   );
 });
 
@@ -348,11 +340,8 @@ Deno.test("viewScheduledTransactions", async (t) => {
       let client = new Client();
       client.recurringTransactions = state.recurringTransactions;
 
-      let clientBudget = new Budget();
-      clientBudget.recurringTransactions = state.recurringTransactions;
-      // The client state should be equivalent to the model if they both start in the same initial state
-      // This is write-through cache functionality
-      let impl = new Impl(state.db, client, { clientBudget });
+      let clientModel = new Budget();
+      let impl = new Impl(state.db, client, { clientModel });
       let model = refinementMapping(impl);
 
       const cresp = await client.setup(state.db);
@@ -361,10 +350,9 @@ Deno.test("viewScheduledTransactions", async (t) => {
       await impl.viewScheduledTransactions(state.start, state.end);
       model.viewScheduledTransactions(state.start, state.end);
 
-      let mappedModel = refinementMapping(impl);
+      impl.db.recurring_transactions = await client.dbstate();
 
-      // Replace this with actual read from DB
-      mappedModel.recurringTransactions = model.recurringTransactions;
+      let mappedModel = refinementMapping(impl);
 
       console.log(JSON.stringify(impl, null, 2));
 
