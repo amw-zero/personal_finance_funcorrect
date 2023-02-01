@@ -94,9 +94,14 @@ interface AppError {
   message: string;
 }
 
+interface DeleteRecurringTransactionJson {
+  type: "recurring_transactions_delete_success";
+}
+
 type RecurringTransactionResponse = RecurringTransactionJson | AppError
 type RecurringTransactionsResponse = RecurringTransactions | AppError
 type ScheduledTransactionsResponse = ScheduledTransactions | AppError
+type DeleteRecurringTransactionResponse = DeleteRecurringTransactionJson | AppError
 
 const API_HOST = "http://localhost:3000";
 
@@ -117,14 +122,14 @@ function normalizeRecurringTransaction(json: RecurringTransactionJson): Recurrin
   }
 }
 
-function serializeDate(d: Date): string {
+export function serializeDate(d: Date): string {
   let month = (d.getMonth() + 1).toString().padStart(2, "0");
   let day = d.getDate().toString().padStart(2, "0");
   let year = d.getFullYear().toString();
   return `${year}-${month}-${day}`;
 }
 
-function serializeRecurringTransaction(crt: CreateRecurringTransaction) {
+function serializeCreateRecurringTransaction(crt: CreateRecurringTransaction) {
   switch (crt.recurrenceRule.recurrenceType) {
     case "monthly": return JSON.stringify({
       name: crt.name,
@@ -180,6 +185,50 @@ function serializeRecurringTransactionEdit(ert: EditRecurringTransaction) {
   }
 }
 
+function serializeCreateDBRecurringTransaction(rt: RecurringTransaction) {
+  switch (rt.recurrenceRule.recurrenceType) {
+    case "monthly": return {
+      id: rt.id,
+      name: rt.name,
+      amount: rt.amount,
+      recurrence_rule: {
+        recurrence_type: "monthly",
+        day: rt.recurrenceRule.day,
+      }
+    };
+    case "weekly":
+      let basisDate: Date | null = null;
+      if (rt.recurrenceRule.basis) {
+        const [month, day, year] = rt.recurrenceRule.basis.split("/").map((dateComponent: string) => parseInt(dateComponent, 10));
+        basisDate = new Date(year, month - 1, day);
+      }
+
+      return {
+        id: rt.id,
+        name: rt.name,
+        amount: rt.amount,
+        recurrence_rule: {
+          recurrence_type: "weekly",
+          day: rt.recurrenceRule.day,
+          interval: rt.recurrenceRule.interval,
+          basis: basisDate,
+        }
+      };
+  }
+}
+
+function serializeDBState(db: DBState) {
+  return JSON.stringify({
+    state: {
+      recurring_transactions: db.recurring_transactions.map(serializeCreateDBRecurringTransaction)
+    }
+  });
+}
+
+export type DBState = { 
+  recurring_transactions: RecurringTransaction[] 
+}
+
 export class Client {
   recurringTransactions: RecurringTransaction[] = [];
   scheduledTransactions: ScheduledTransaction[] = [];
@@ -196,13 +245,13 @@ export class Client {
 
     let resp = await fetch(`${API_HOST}/recurring_transactions`, {
       method: "POST",
-      body: serializeRecurringTransaction(crt),
+      body: serializeCreateRecurringTransaction(crt),
       headers: {
         'Content-Type': "application/json",
       },
     });
 
-    this.updateNewRecurringTransaction(await resp.json());
+    return this.updateNewRecurringTransaction(await resp.json());
   }
 
   async editRecurringTransaction(rt: EditRecurringTransaction) {
@@ -219,6 +268,19 @@ export class Client {
     this.updateEditedRecurringTransaction(await resp.json());
   }
 
+  async deleteRecurringTransaction(id: number) {
+    this.updateLoading(true);
+
+    let resp = await fetch(`${API_HOST}/recurring_transactions/${id}`, {
+      method: "DELETE",
+      headers: {
+        'Content-Type': "application/json",
+      },
+    });
+
+    await this.updateDeletedRecurringTransaction(id, await resp.json());
+  }
+
   async viewRecurringTransactions() {
     this.updateLoading(true);
     let resp = await fetch(`${API_HOST}/recurring_transactions`);
@@ -233,10 +295,15 @@ export class Client {
     this.updateScheduledTransactions(await resp.json());
   }
 
-  async setup() {
+  async setup(db: DBState) {
+    console.log("[State] setup - sending DB state")
     return fetch(`${API_HOST}/setup`, {
-      method: "POST",
-    });
+        method: "POST",
+        body: serializeDBState(db),
+        headers: {
+          'Content-Type': "application/json",
+        },
+      });
   }
 
   async teardown() {
@@ -245,7 +312,19 @@ export class Client {
     });
   }
 
-  updateNewRecurringTransaction(json: RecurringTransactionResponse) {
+  async dbstate(): Promise<RecurringTransaction[]> {
+    const resp = await fetch(`${API_HOST}/recurring_transactions`);
+    const json = await resp.json();
+
+    switch (json.type) {
+      case "recurring_transactions":
+        return json.recurring_transactions.map(normalizeRecurringTransaction);
+      default:
+        return [{ id: -1, name: "Error txn", amount: -1, recurrenceRule: { recurrenceType: "monthly", day: -1 } }];
+    };
+  }
+
+  async updateNewRecurringTransaction(json: RecurringTransactionResponse) {
     this.loading = false;
     switch (json.type) {
       case "recurring_transaction":
@@ -290,6 +369,25 @@ export class Client {
         break;
       default:
         console.log("Default was hit when updating new recurring transaction")
+    };
+  }
+
+  async updateDeletedRecurringTransaction(id: number, json: DeleteRecurringTransactionResponse) {
+    this.loading = false;
+    switch (json.type) {
+      case "recurring_transactions_delete_success":
+        const idx = this.recurringTransactions.findIndex(currRt => currRt.id === id);
+        if (idx === -1) {
+          return;
+        }
+
+        this.recurringTransactions.splice(idx, 1);
+        break;
+      case "error":
+        this.error = json.message;
+        break;
+      default:
+        console.log("Default was hit when deleting recurring transaction")
     };
   }
 

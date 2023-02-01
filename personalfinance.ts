@@ -1,8 +1,10 @@
+import { Client } from './react_ui/src/state.ts';
+
 // Section -- Core data model
 
 type DateString = string;
 
-function dateStringFromDate(d: Date): DateString {
+export function dateStringFromDate(d: Date): DateString {
   let month = (d.getMonth() + 1).toString().padStart(2, "0");
   let day = d.getDate().toString().padStart(2, "0");
   let year = d.getFullYear().toString();
@@ -184,6 +186,16 @@ export class Budget {
     this.recurringTransactions[idx] = newRt;
 
     this.recurringTransactions.sort(compareRecurringTransactions);
+  }
+
+  deleteRecurringTransaction(id: number) {
+    const idx = this.recurringTransactions.findIndex(currRt => currRt.id === id);
+    if (idx === -1) {
+      this.error = "Not found"
+      return;
+    }
+
+    this.recurringTransactions.splice(idx, 1);
   }
 
   viewScheduledTransactions(start: Date, end: Date) {
