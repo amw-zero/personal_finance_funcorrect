@@ -54,7 +54,6 @@ function refinementMapping(impl: Impl): Budget {
   let budget = new Budget();
   budget.error = impl.client.error;
 
-  // This should actually read from the DB, DB is main memory
   budget.recurringTransactions = [...impl.db.recurring_transactions];
   budget.scheduledTransactions = [...impl.client.scheduledTransactions];
 
@@ -92,7 +91,6 @@ Deno.test("deleteRecurringTransaction", async (t) => {
 
   let recurringTransactions = fc.uniqueArray(recurringTransaction, { selector: (v: RecurringTransaction) => v.id });
 
-  // Relies on TestState.db = d => setup(DB, d) = d
   let state = fc.record({
     recurringTransactions,
     id: fc.integer({ min: 1, max: 4 }),
@@ -103,7 +101,6 @@ Deno.test("deleteRecurringTransaction", async (t) => {
 
   await fc.assert(
     fc.asyncProperty(state, async (state: DeleteRecurringTransactionState) => {
-//      console.log("Delete state", JSON.stringify(state, null, 2));
       let client = new Client();
       client.recurringTransactions = state.recurringTransactions;
 
