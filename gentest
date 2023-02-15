@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+#!/usr/bin/env sh
+
+sligh model/budget.sl
+sligh model/budget.sl -transform model/refinemap-test.sl -out refinemap-test-gen
