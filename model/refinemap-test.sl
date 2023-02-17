@@ -21,7 +21,7 @@ def genVariantCase(vc: VariantCase):
 end
 
 def genVariant(name: String, cases: VariantCaseList):
-  tsMethodCall("fc", "oneOf", cases.map(genVariantCase))
+  tsMethodCall("fc", "oneof", cases.map(genVariantCase))
 end
 
 def genGeneric(name: String, types: Array(Type)):
@@ -103,7 +103,6 @@ def toActionTest(action: Action):
           tsAwait(tsMethodCall("cresp", "arrayBuffer", [])),
           tsAwait(tsMethodCall(clientName, action.name, action.args.map(toCallValue))),
           tsMethodCall("model", action.name, action.args.map(toCallValue)),
-
           tsAwait(tsMethodCall("client", "teardown", []))
         ])
       )])
@@ -111,7 +110,7 @@ def toActionTest(action: Action):
   )]
 
   let testBody = [dataSetup, [stateSetup], property].flatten()
-  let testWrapper = tsClosure([tsTypedAttr("t", tsType("Deno.Test"))], testBody).tsAsync()
+  let testWrapper = tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody).tsAsync()
   
   tsMethodCall("Deno", "test", [action.name, testWrapper])
 end
@@ -124,8 +123,39 @@ def toSchemaImplImport(schema: Schema):
   tsSymbolImport(schema.name, schema.name)
 end
 
+def implClass():
+  tsClass("Impl", [
+    tsClassProp("db", tsType("DBState")),
+    tsClassProp("client", tsType("Client")),
+    tsClassProp("aux", tsType("AuxiliaryVariables")),
+    tsClassMethod("constructor", [
+      tsTypedAttr("db", tsType("DBState")),
+      tsTypedAttr("client", tsType("Client")),
+      tsTypedAttr("aux", tsType("AuxiliaryVariables"))
+    ], [
+      tsAssignment(tsIden("this.db"), tsIden("db")),
+      tsAssignment(tsIden("this.client"), tsIden("client")),
+      tsAssignment(tsIden("this.aux"), tsIden("aux"))
+
+    ])
+  ])
+end
+
 typescript:
-  {{ tsImport(Model.schemas.map(toSchemaImplImport), "./react_ui/src/state.ts") }}
+  {{ tsAliasImport(
+    Model.schemas.map(toSchemaImplImport)
+      .append(tsSymbolImport("Client", "Client")),
+    "./react_ui/src/state.ts")
+  }}
+  {{ tsAliasImport(
+    [tsSymbolImport("assertEquals", "assertEquals")],
+    "https://deno.land/std@0.149.0/testing/asserts.ts")
+  }}
+  {{
+    tsDefaultImport("fc", "https://cdn.skypack.dev/fast-check")
+  }}
   {{* Model.actions.map(toActionStateType) }}
+  {{ tsInterface("AuxiliaryVariables", [tsTypedAttr("clientModel", tsType("Budget"))]) }}
+  {{ implClass() }}
   {{ tsExport(tsLet("runTests", actionTests())) }}
 end
