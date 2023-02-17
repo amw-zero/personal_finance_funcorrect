@@ -88,26 +88,50 @@ def toStateProp(attr: TypedAttribute):
   tsObjectProp(attr.name, tsIden(attr.name))
 end
 
+def toClientModelSetup(attr: TypedAttr):
+  tsAssignment(
+    tsIden("clientModel.".appendStr(attr.name)), tsIden("state.".appendStr(attr.name))
+  )
+end
+
 def toActionTest(action: Action):
   let clientName = "client"
   let dataSetup = actionState(action).map(toTestValue)
   let stateSetup = tsLet("state", tsObject(actionState(action).map(toStateProp)))
+  let testOperations = [
+    tsLet("client", tsNew("Client", [])),
+    tsLet("clientModel", tsNew("Budget", []))
+  ].concat(action.stateVars.map(toClientModelSetup)).concat([
+    tsLet("impl", tsNew("Impl", [
+      tsIden("state.db"),
+      tsIden("client"),
+      tsObject([tsObjectProp("clientModel", tsIden("clientModel"))])
+    ])),
+    tsLet("model", tsNew("Budget", [])),
+    tsLet("cresp", tsAwait(tsMethodCall(clientName, "setup", [tsIden("state.db")]))),
+    tsAwait(tsMethodCall("cresp", "arrayBuffer", [])),
+    tsAwait(tsMethodCall("impl", action.name, action.args.map(toCallValue))),
+    tsMethodCall("model", action.name, action.args.map(toCallValue)),
+    tsAwait(tsMethodCall("client", "teardown", []))
+  ])
 
-  let property = [tsAwait(
-    tsMethodCall("fc", "assert", [
-      tsMethodCall("fc", "asyncProperty", [tsIden("state"), tsAsync(
-        tsClosure([tsTypedAttr("state", tsType(actionStateTypeName(action.name)))], [
-          tsLet("client", tsNew("Client", [])),
-          tsLet("model", tsNew("Budget", [])),
-          tsLet("cresp", tsAwait(tsMethodCall(clientName, "setup", [tsIden("state.db")]))),
-          tsAwait(tsMethodCall("cresp", "arrayBuffer", [])),
-          tsAwait(tsMethodCall(clientName, action.name, action.args.map(toCallValue))),
-          tsMethodCall("model", action.name, action.args.map(toCallValue)),
-          tsAwait(tsMethodCall("client", "teardown", []))
+  let property = [
+    tsAwait(
+      tsMethodCall("fc", "assert", [
+        tsMethodCall("fc", "asyncProperty", [
+          tsIden("state"),
+          tsAsync(
+            tsClosure(
+              [
+                tsTypedAttr("state", tsType(actionStateTypeName(action.name)))
+              ],
+              testOperations
+            )
+          )
         ])
-      )])
-    ])
-  )]
+      ])
+    )
+  ]
 
   let testBody = [dataSetup, [stateSetup], property].flatten()
   let testWrapper = tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody).tsAsync()
@@ -123,6 +147,10 @@ def toSchemaImplImport(schema: Schema):
   tsSymbolImport(schema.name, schema.name)
 end
 
+def toImplActionMethod(action: Action):
+  tsClassMethod("async ".appendStr(action.name), action.args, [])
+end
+
 def implClass():
   tsClass("Impl", [
     tsClassProp("db", tsType("DBState")),
@@ -136,24 +164,26 @@ def implClass():
       tsAssignment(tsIden("this.db"), tsIden("db")),
       tsAssignment(tsIden("this.client"), tsIden("client")),
       tsAssignment(tsIden("this.aux"), tsIden("aux"))
-
     ])
-  ])
+  ].concat(Model.actions.map(toImplActionMethod)))
 end
 
 typescript:
   {{ tsAliasImport(
     Model.schemas.map(toSchemaImplImport)
-      .append(tsSymbolImport("Client", "Client")),
+      .append(tsSymbolImport("Client", "Client"))
+      .append(tsSymbolImport("DBState", "DBState")),
     "./react_ui/src/state.ts")
+  }}
+  {{ tsAliasImport([
+    tsSymbolImport("Budget", "Budget")
+  ], "./model.ts")
   }}
   {{ tsAliasImport(
     [tsSymbolImport("assertEquals", "assertEquals")],
     "https://deno.land/std@0.149.0/testing/asserts.ts")
   }}
-  {{
-    tsDefaultImport("fc", "https://cdn.skypack.dev/fast-check")
-  }}
+  {{ tsDefaultImport("fc", "https://cdn.skypack.dev/fast-check") }}
   {{* Model.actions.map(toActionStateType) }}
   {{ tsInterface("AuxiliaryVariables", [tsTypedAttr("clientModel", tsType("Budget"))]) }}
   {{ implClass() }}
