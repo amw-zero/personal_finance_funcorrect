@@ -1,15 +1,3 @@
-def genString():
-  tsMethodCall("fc", "string", [])
-end
-
-def genInt():
-  tsMethodCall("fc", "integer", [])
-end
-
-def genFloat():
-  tsMethodCall("fc", "float", [])
-end
-
 def genVariantCaseAttr(attr: TypedAttribute):
   tsObjectProp(attr.name, genType(attr.type))
 end
@@ -35,9 +23,9 @@ def genType(type: Type):
     | Schema(s): genSchemaValue(s)
     | Variant(name, cases): genVariant(name, cases)
     | Generic(name, types): genGeneric(name, types)
-    | String(): genString()
-    | Int(): genInt()
-    | Decimal(): genFloat()
+    | String(): tsMethodCall("fc", "string", [])
+    | Int(): tsMethodCall("fc", "integer", [])
+    | Decimal(): tsMethodCall("fc", "float", [])
   end
 end
 
@@ -57,21 +45,59 @@ def toArgDataSetup(arg: TypedAttr):
   tsObjectProp(arg.name, genType(arg.type))
 end
 
-def toCommandInstantiation(action: Action):
-  if action.args.length().greaterThan(0):
+def actionData(action: Action):
+  action.name.appendStr("Data")
+end
+
+def commandDataSetup(action: Action):
+  tsLet(
+    actionData(action),
     tsMethodCall("fc", "record", [
       tsObject(action.args.map(toArgDataSetup))
     ])
+  )
+end
+
+def toName(arg: TypedAttr):
+  tsIden(arg.name)
+end
+
+def toMapObjectPatProp(arg: TypedAttr):
+  tsObjectPatProp(arg.name, arg.name)
+end
+
+def toMapArg(action: Action):
+  tsObjectPat(action.args.map(toMapObjectPatProp), tsType(actionInputTypeName(action)))
+end
+
+def commandInstantiation(action: Action):
+  tsMethodCall(actionData(action), "map", [
+    tsClosure([
+      toMapArg(action)
+    ], [
+      tsNew(commandName(action), action.args.map(toName))
+    ], false)]
+  )
+end
+
+def toCommandInstantiation(action: Action):
+  if action.args.length().greaterThan(0):
+    commandInstantiation(action)
   else:
     tsMethodCall("fc", "constant", [tsNew(commandName(action), [])])
   end
 end
 
+def commandData():
+  Model.actions.map(commandDataSetup)
+end
+
 def funcorrectTest():
   let testBody = [
-    tsLet("client", tsNew("Client", [])),
+    tsLet("client", tsNew("Client", []))
+  ].concat(commandData()).concat([
     tsLet("allCommands", Model.actions.map(toCommandInstantiation))
-  ]
+  ])
 
   tsMethodCall("Deno", "test", [
     "functional correctness",
@@ -130,8 +156,17 @@ def imports():
   ]
 end
 
+def actionInputTypeName(action: Action):
+  action.name.appendStr("Input")
+end
+
+def toActionInputType(action: Action):
+  tsInterface(actionInputTypeName(action), action.args.map(toTypedAttr))
+end
+
 typescript:
   {{* imports() }}
+  {{* Model.actions.map(toActionInputType) }}
   {{* Model.actions.map(toActionCommand) }}
   {{ funcorrectTest() }}
 end

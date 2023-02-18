@@ -26,8 +26,4 @@ process Budget:
   def DeleteRecurringTransaction(id: Int):
     recurringTransactions := recurringTransactions.delete(id)
   end
-
-  def VoidAction():
-    5
-  end
 end
