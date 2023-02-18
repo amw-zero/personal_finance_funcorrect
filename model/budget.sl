@@ -4,6 +4,7 @@ data RecurrenceRule:
 end
 
 entity RecurringTransaction:
+  id: Int
   name: String
   amount: Decimal
   rule: RecurrenceRule
@@ -24,5 +25,9 @@ process Budget:
 
   def DeleteRecurringTransaction(id: Int):
     recurringTransactions := recurringTransactions.delete(id)
+  end
+
+  def VoidAction():
+    5
   end
 end
