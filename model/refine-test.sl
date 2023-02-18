@@ -93,10 +93,24 @@ def commandData():
 end
 
 def funcorrectTest():
+  let property = [
+  ]
+
   let testBody = [
     tsLet("client", tsNew("Client", []))
   ].concat(commandData()).concat([
-    tsLet("allCommands", Model.actions.map(toCommandInstantiation))
+    tsLet("allCommands", Model.actions.map(toCommandInstantiation)),
+    tsAwait(
+      tsMethodCall("fc", "assert", [
+        tsMethodCall("fc", "asyncProperty", [
+          tsMethodCall("fc", "commands", [
+            tsIden("allCommands"),
+            tsObject([tsObjectProp("size", tsString("small"))]),
+            tsClosure([tsTypedAttr("cmds", tsType("any"))], property, true)
+          ])
+        ])
+      ])
+    )
   ])
 
   tsMethodCall("Deno", "test", [
@@ -128,11 +142,15 @@ def commandName(action: Action):
   action.name.appendStr("Command")
 end
 
-def toActionCommand(action: Action):
-  tsClass(commandName(action), [
+def toClassProp(arg: TypedAttr):
+  tsClassProp(arg.name, arg.type)
+end
+
+def toActionCommandClass(action: Action):
+  tsClass(commandName(action), action.args.map(toClassProp).concat([
     tsClassMethod("constructor", action.args.map(toTypedAttr), action.args.map(toArgAssignment), false),
     actionMethod(action)
-  ])
+  ]))
 end
 
 def toSchemaImplImport(schema: Schema):
@@ -167,6 +185,6 @@ end
 typescript:
   {{* imports() }}
   {{* Model.actions.map(toActionInputType) }}
-  {{* Model.actions.map(toActionCommand) }}
+  {{* Model.actions.map(toActionCommandClass) }}
   {{ funcorrectTest() }}
 end
