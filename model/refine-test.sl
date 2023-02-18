@@ -4,7 +4,7 @@ end
 
 def genVariantCase(vc: VariantCase):
   tsMethodCall("fc", "record", [
-    tsObject(vc.attrs.map(genVariantCaseAttr).append(tsObjectProp("type", tsString(vc.name))))
+    tsObject(vc.attrs.map(genVariantCaseAttr).append(tsObjectProp("type", tsMethodCall("fc", "constant", [tsString(vc.name)]))))
   ])
 end
 
@@ -75,7 +75,7 @@ def commandInstantiation(action: Action):
     tsClosure([
       toMapArg(action)
     ], [
-      tsNew(commandName(action), action.args.map(toName))
+      tsReturn(tsNew(commandName(action), action.args.map(toName)))
     ], false)]
   )
 end
@@ -94,6 +94,24 @@ end
 
 def funcorrectTest():
   let property = [
+    tsAwait(tsMethodCall("client", "setup", [
+      tsObject([tsObjectProp("recurring_transactions", [])])
+    ])),
+    tsLet("model", tsNew("Budget", [])),
+    tsAssignment(tsIden("client"), tsNew("Client", [])),
+    tsLet("env", tsClosure([], [
+      tsReturn(
+        tsObject([
+          tsObjectProp("model", tsIden("model")),
+          tsObjectProp("real", tsIden("client"))
+        ])
+      )
+    ], false)),
+    tsAwait(tsMethodCall("fc", "asyncModelRun", [tsIden("env"), tsIden("cmds")])),
+    tsFuncCall("assertEquals", [tsIden("client.error"), tsIden("model.error")]),
+    tsFuncCall("assertEquals", [tsIden("client.recurringTransactions"), tsIden("model.recurringTransactions")]),
+    tsFuncCall("assertEquals", [tsIden("client.scheduledTransactions"), tsIden("model.scheduledTransactions")]),
+    tsAwait(tsMethodCall("client", "teardown", []))
   ]
 
   let testBody = [
@@ -105,9 +123,9 @@ def funcorrectTest():
         tsMethodCall("fc", "asyncProperty", [
           tsMethodCall("fc", "commands", [
             tsIden("allCommands"),
-            tsObject([tsObjectProp("size", tsString("small"))]),
-            tsClosure([tsTypedAttr("cmds", tsType("any"))], property, true)
-          ])
+            tsObject([tsObjectProp("size", tsString("small"))])
+          ]),
+          tsClosure([tsTypedAttr("cmds", tsType("any"))], property, true)
         ])
       ])
     )
@@ -115,7 +133,7 @@ def funcorrectTest():
 
   tsMethodCall("Deno", "test", [
     "functional correctness",
-    tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody, false)
+    tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody, true)
   ])
 end
 
@@ -149,6 +167,7 @@ end
 def toActionCommandClass(action: Action):
   tsClass(commandName(action), action.args.map(toClassProp).concat([
     tsClassMethod("constructor", action.args.map(toTypedAttr), action.args.map(toArgAssignment), false),
+    tsClassMethod("check", [], [tsReturn(tsIden("true"))], false),
     actionMethod(action)
   ]))
 end
