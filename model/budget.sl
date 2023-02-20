@@ -1,5 +1,5 @@
 data RecurrenceRule:
-  | Weekly(day: Int, other: Int)
+  | Weekly(day: Int)
   | Monthly(day: Int)
 end
 
@@ -24,9 +24,12 @@ end
 process Budget:
   recurringTransactions: Set(RecurringTransaction)
   scheduledTransactions: Set(ScheduledTransaction)
+  error: Int
 
-  def AddRecurringTransaction(crt: CreateRecurringTransaction):
-    recurringTransactions := recurringTransactions.append(crt)
+  def AddRecurringTransaction(crt: CreateRecurringTransaction, id: Int):
+    recurringTransactions := recurringTransactions.append(RecurringTransaction.new(
+      id, crt.name, crt.amount, crt.rule
+    ))
   end
 
   def DeleteRecurringTransaction(id: Int):

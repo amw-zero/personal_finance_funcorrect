@@ -1,3 +1,4 @@
 #!/usr/bin/env sh
 
+sligh model/budget.sl
 sligh model/budget.sl -transform model/refine-test.sl -out refinetest
