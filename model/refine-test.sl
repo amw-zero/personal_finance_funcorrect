@@ -92,12 +92,37 @@ def commandData():
   Model.actions.map(commandDataSetup)
 end
 
+def defaultGeneric(s: String):
+  case s:
+    | "Set": []
+  end
+end
+
+def toDefaultValue(attr: TypedAttr):
+  case attr.type:
+    | Generic(name, _types): defaultGeneric(name)
+    | String(): ""
+  end
+end
+
+
+def toAssertion(var: TypedAttr):
+  let clientStateToUnknown = tsCast(tsIden("client.".appendStr(var.name)), "unknown")
+  let clientToModelCast = tsCast(clientStateToUnknown, modelTypeCast(var.type))
+
+  tsFuncCall("assertEquals", [
+    clientToModelCast,
+    tsIden("model.".appendStr(var.name)),
+    "State variable should correspond to model: ".appendStr(var.name)
+  ])
+end
+
 def funcorrectTest():
   let property = [
     tsAwait(tsMethodCall("client", "setup", [
       tsObject([tsObjectProp("recurring_transactions", [])])
     ])),
-    tsLet("model", tsNew("Budget", [])),
+    tsLet("model", tsNew("Budget", Budget.attributes.map(toDefaultValue))),
     tsAssignment(tsIden("client"), tsNew("Client", [])),
     tsLet("env", tsClosure([], [
       tsReturn(
@@ -107,12 +132,10 @@ def funcorrectTest():
         ])
       )
     ], false)),
-    tsAwait(tsMethodCall("fc", "asyncModelRun", [tsIden("env"), tsIden("cmds")])),
-    tsFuncCall("assertEquals", [tsIden("client.error"), tsIden("model.error")]),
-    tsFuncCall("assertEquals", [tsIden("client.recurringTransactions"), tsIden("model.recurringTransactions")]),
-    tsFuncCall("assertEquals", [tsIden("client.scheduledTransactions"), tsIden("model.scheduledTransactions")]),
+    tsAwait(tsMethodCall("fc", "asyncModelRun", [tsIden("env"), tsIden("cmds")]))
+  ].concat(Model.variables.map(toAssertion)).concat([
     tsAwait(tsMethodCall("client", "teardown", []))
-  ]
+  ])
 
   let testBody = [
     tsLet("client", tsNew("Client", []))
@@ -149,11 +172,69 @@ def toActionArg(arg: TypedAttr):
   tsIden("this.".appendStr(arg.name))
 end
 
-def actionMethod(action: Action):
+def implConstantName(name: String):
+  name
+end
+
+def genTypeName(type: Type):
+  case type:
+    | Schema(s): s.name
+  end
+end
+
+def castGenericToModel(name: String, types: Set(Type)):
+  case name:
+    | "Set": genTypeName(types.index(0)).appendStr("Model[]")
+  end
+end
+
+def modelTypeCast(type: Type):
+  case type:
+    | Schema(s): s.name.appendStr("Model")
+    | Generic(name, types): castGenericToModel(name, types)
+    | Int(): "number"
+    | String(): "string"
+  end
+end
+
+def toModelActionArg(arg: TypedAttr):
+  let toUnknown = tsCast(tsIden("this.".appendStr(arg.name)), "unknown")
+
+  tsCast(toUnknown, modelTypeCast(arg.type))
+end
+
+def createActionMethod(action: Action):
+  def filterId(arg: TypedAttr):
+    if arg.name.equalsStr("id"):
+      false
+    else:
+      true
+    end
+  end
+
   tsClassMethod("run", [tsTypedAttr("b", tsType("Budget")), tsTypedAttr("c", tsType("Client"))], [
-    tsMethodCall("b", action.name, action.args.map(toActionArg)),
-    tsAwait(tsMethodCall("c", action.name, action.args.map(toActionArg)))
+    tsAwait(tsMethodCall("c", action.name, action.args.filter(filterId).map(toActionArg))),
+    tsMethodCall("b", action.name,
+      action.args
+        .filter(filterId)
+        .map(toModelActionArg)
+        .concat([tsIden("c.lastCreatedTxn!.id")]))
   ], true)
+end
+
+def defaultActionMethod(action: Action):
+  tsClassMethod("run", [tsTypedAttr("b", tsType("Budget")), tsTypedAttr("c", tsType("Client"))], [
+    tsAwait(tsMethodCall("c", action.name, action.args.map(toActionArg))),
+    tsMethodCall("b", action.name, action.args.map(toActionArg))
+  ], true)
+end
+
+def actionMethod(action: Action):
+  if action.name.equalsStr("AddRecurringTransaction"):
+    createActionMethod(action)
+  else:
+    defaultActionMethod(action)
+  end
 end
 
 def commandName(action: Action):
@@ -173,7 +254,11 @@ def toActionCommandClass(action: Action):
 end
 
 def toSchemaImplImport(schema: Schema):
-  tsSymbolImport(schema.name, schema.name)
+  tsSymbolImport(schema.name, implConstantName(schema.name))
+end
+
+def toSchemaModelImport(schema: Schema):
+  tsSymbolImport(schema.name, schema.name.appendStr("Model"))
 end
 
 def imports():
@@ -183,6 +268,10 @@ def imports():
         .append(tsSymbolImport("Client", "Client"))
         .append(tsSymbolImport("DBState", "DBState")),
       "./react_ui/src/state.ts"),
+    tsAliasImport(
+      Model.schemas.map(toSchemaModelImport),
+      "./model.ts"
+    ),
     tsAliasImport([
       tsSymbolImport("Budget", "Budget")
     ], "./model.ts"),

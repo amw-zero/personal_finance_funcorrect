@@ -24,7 +24,7 @@ end
 process Budget:
   recurringTransactions: Set(RecurringTransaction)
   scheduledTransactions: Set(ScheduledTransaction)
-  error: Int
+  error: String
 
   def AddRecurringTransaction(crt: CreateRecurringTransaction, id: Int):
     recurringTransactions := recurringTransactions.append(RecurringTransaction.new(

@@ -77,7 +77,7 @@ export interface EditRecurringTransaction {
   recurrenceRule: CreateRecurrenceRule;
 }
 
-interface ScheduledTransaction {
+export interface ScheduledTransaction {
   date: string;
   name: string;
   amount: number;
@@ -234,13 +234,15 @@ export class Client {
   scheduledTransactions: ScheduledTransaction[] = [];
 
   loading: boolean = false;
-  error: string | null = null;
+  error: string | null = "";
+
+  lastCreatedTxn: RecurringTransaction | null = null;
 
   constructor(config: (c: Client) => void = () => { }) {
     config(this);
   }
 
-  async addRecurringTransaction(crt: CreateRecurringTransaction) {
+  async AddRecurringTransaction(crt: CreateRecurringTransaction) {
     this.updateLoading(true);
 
     let resp = await fetch(`${API_HOST}/recurring_transactions`, {
@@ -268,7 +270,7 @@ export class Client {
     this.updateEditedRecurringTransaction(await resp.json());
   }
 
-  async deleteRecurringTransaction(id: number) {
+  async DeleteRecurringTransaction(id: number) {
     this.updateLoading(true);
 
     let resp = await fetch(`${API_HOST}/recurring_transactions/${id}`, {
@@ -328,7 +330,9 @@ export class Client {
     this.loading = false;
     switch (json.type) {
       case "recurring_transaction":
-        this.recurringTransactions = [...this.recurringTransactions, normalizeRecurringTransaction(json)];
+        let newTxn = normalizeRecurringTransaction(json);
+        this.lastCreatedTxn = newTxn;
+        this.recurringTransactions = [...this.recurringTransactions, newTxn];
         break;
       case "error":
         this.error = json.message;

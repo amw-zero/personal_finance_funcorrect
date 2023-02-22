@@ -115,7 +115,7 @@ function RecurringTransactionForm({ onCloseRecurringTransactionForm, isActive, i
       return;
     }
 
-    await client.addRecurringTransaction(data);
+    await client.AddRecurringTransaction(data);
     onCloseRecurringTransactionForm();
   };
 
@@ -472,7 +472,7 @@ function RecurringTransactionActionMenu({ isActive, recurringTransaction, onClic
   const classnames = `modal ${isActive ? "is-active": ""}`;
 
   const onClickDelete = async () => {
-    await client.deleteRecurringTransaction(recurringTransaction.id);
+    await client.DeleteRecurringTransaction(recurringTransaction.id);
     onClose();
   }
 
