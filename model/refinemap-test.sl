@@ -63,8 +63,35 @@ def toTestValue(attr: TypedAttribute):
   end
 end
 
+def genTypeName(type: Type):
+  case type:
+    | Schema(s): s.name
+  end
+end
+
+def castGenericToModel(name: String, types: Set(Type)):
+  case name:
+    | "Set": genTypeName(types.index(0)).appendStr("Model[]")
+  end
+end
+
+def modelTypeCast(type: Type):
+  case type:
+    | Schema(s): s.name.appendStr("Model")
+    | Generic(name, types): castGenericToModel(name, types)
+    | Int(): "number"
+    | String(): "string"
+  end
+end
+
 def toCallValue(arg: TypedAttribute):
   tsIden("state.".appendStr(arg.name))
+end
+
+def toModelCallValue(arg: TypedAttribute):
+  let toUnknown = tsCast(tsIden("state.".appendStr(arg.name)), "unknown")
+  
+  tsCast(toUnknown, modelTypeCast(arg.type))
 end
 
 def actionStateTypeName(actionName: String):
@@ -94,24 +121,69 @@ def toClientModelSetup(attr: TypedAttr):
   )
 end
 
+def defaultGeneric(s: String):
+  case s:
+    | "Set": []
+  end
+end
+
+def toDefaultValue(attr: TypedAttr):
+  case attr.type:
+    | Generic(name, _types): defaultGeneric(name)
+    | String(): ""
+  end
+end
+
+def isCreateAction(action: Action):
+  action.name.equalsStr("AddRecurringTransaction")
+end
+
+def actionArgs(action: Action):
+  def filterId(arg: TypedAttr):
+    if arg.name.equalsStr("id"):
+      false
+    else:
+      true
+    end
+  end
+
+  if isCreateAction(action):
+    action.args.filter(filterId)
+  else:
+    action.args
+  end
+end
+
+def implActionCall(action: Action):
+  tsAwait(tsMethodCall("impl", action.name, actionArgs(action).map(toCallValue)))
+end
+
+def modelActionCall(action: Action):
+  if isCreateAction(action):
+    tsMethodCall("model", action.name, actionArgs(action).map(toModelCallValue).concat([tsIden("impl.client.lastCreatedTxn!.id")]))
+  else:
+    tsMethodCall("model", action.name, actionArgs(action).map(toModelCallValue))
+  end
+end
+
 def toActionTest(action: Action):
   let clientName = "client"
   let dataSetup = actionState(action).map(toTestValue)
   let stateSetup = tsLet("state", tsObject(actionState(action).map(toStateProp)))
   let testOperations = [
     tsLet("client", tsNew("Client", [])),
-    tsLet("clientModel", tsNew("Budget", []))
+    tsLet("clientModel", tsNew("Budget", Budget.attributes.map(toDefaultValue)))
   ].concat(action.stateVars.map(toClientModelSetup)).concat([
     tsLet("impl", tsNew("Impl", [
       tsIden("state.db"),
       tsIden("client"),
       tsObject([tsObjectProp("clientModel", tsIden("clientModel"))])
     ])),
-    tsLet("model", tsNew("Budget", [])),
+    tsLet("model", tsNew("Budget", Budget.attributes.map(toDefaultValue))),
     tsLet("cresp", tsAwait(tsMethodCall(clientName, "setup", [tsIden("state.db")]))),
     tsAwait(tsMethodCall("cresp", "arrayBuffer", [])),
-    tsAwait(tsMethodCall("impl", action.name, action.args.map(toCallValue))),
-    tsMethodCall("model", action.name, action.args.map(toCallValue)),
+    implActionCall(action),
+    modelActionCall(action),
     tsAwait(tsMethodCall("client", "teardown", []))
   ])
 
@@ -147,7 +219,7 @@ def toSchemaImplImport(schema: Schema):
 end
 
 def toImplActionMethod(action: Action):
-  tsClassMethod("async ".appendStr(action.name), action.args, [], false)
+  tsClassMethod("async ".appendStr(action.name), actionArgs(action), [], false)
 end
 
 def implClass():
@@ -167,12 +239,21 @@ def implClass():
   ].concat(Model.actions.map(toImplActionMethod)))
 end
 
+def toSchemaModelImport(schema: Schema):
+  tsSymbolImport(schema.name, schema.name.appendStr("Model"))
+end
+
 typescript:
   {{ tsAliasImport(
     Model.schemas.map(toSchemaImplImport)
       .append(tsSymbolImport("Client", "Client"))
       .append(tsSymbolImport("DBState", "DBState")),
     "./react_ui/src/state.ts")
+  }}
+  {{ tsAliasImport(
+      Model.schemas.map(toSchemaModelImport),
+      "./model.ts"
+    )
   }}
   {{ tsAliasImport([
     tsSymbolImport("Budget", "Budget")
