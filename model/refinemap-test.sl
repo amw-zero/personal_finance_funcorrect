@@ -218,8 +218,48 @@ def toSchemaImplImport(schema: Schema):
   tsSymbolImport(schema.name, schema.name)
 end
 
+def toName(arg: TypedAttr):
+  tsIden(arg.name)
+end
+
+def toCastedName(arg: TypedAttr):
+  let toUnknown = tsCast(tsIden(arg.name), "unknown")
+  
+  tsCast(toUnknown, modelTypeCast(arg.type))
+end
+
+def isWriteAction(action: Action):
+  action.stateVars.length().greaterThan(0)
+end
+
+def toModelCallValue(arg: TypedAttribute):
+  let toUnknown = tsCast(tsIden("state.".appendStr(arg.name)), "unknown")
+  
+  tsCast(toUnknown, modelTypeCast(arg.type))
+end
+
+def implActionImpl(action: Action):
+  if isWriteAction(action):
+    if isCreateAction(action):
+      [
+        tsAwait(tsMethodCall("this.client", action.name, actionArgs(action).map(toName))),
+        tsMethodCall("this.aux.clientModel", action.name, actionArgs(action).map(toCastedName).concat([tsIden("this.client.lastCreatedTxn!.id")]))
+      ]
+    else:
+      [
+        tsAwait(tsMethodCall("this.client", action.name, actionArgs(action).map(toName))),
+        tsMethodCall("this.aux.clientModel", action.name, actionArgs(action).map(toCastedName))
+      ]
+    end
+   
+  else:
+    [tsAwait(tsMethodCall("this.client", action.name, action.args.map(toName)))]
+  end
+end
+
 def toImplActionMethod(action: Action):
-  tsClassMethod("async ".appendStr(action.name), actionArgs(action), [], false)
+  let impl = implActionImpl(action)
+  tsClassMethod("async ".appendStr(action.name), actionArgs(action), impl, false)
 end
 
 def implClass():
