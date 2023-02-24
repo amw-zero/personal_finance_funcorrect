@@ -115,9 +115,31 @@ def toStateProp(attr: TypedAttribute):
   tsObjectProp(attr.name, tsIden(attr.name))
 end
 
+def genericModelTypeStr(name: String, types: Array(Type)):
+  case name:
+    | "Set": "Array".appendStr("<")
+              .appendStr(
+                toModelTypeStr(
+                  types.index(0)
+                ).appendStr("Model")
+              )
+              .appendStr(">")
+  end
+end
+
+def toModelTypeStr(type: Type):
+  case type:
+    | Schema(s): s.name
+    | Generic(name, types): genericModelTypeStr(name, types)
+  end
+end
+
 def toClientModelSetup(attr: TypedAttr):
+  let toUnknown = tsCast(tsIden("state.".appendStr(attr.name)), "unknown")
+  let toModelType = tsCast(toUnknown, toModelTypeStr(attr.type))
+
   tsAssignment(
-    tsIden("clientModel.".appendStr(attr.name)), tsIden("state.".appendStr(attr.name))
+    tsIden("clientModel.".appendStr(attr.name)), toModelType
   )
 end
 
