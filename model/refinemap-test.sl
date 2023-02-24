@@ -120,13 +120,12 @@ def toActionTest(action: Action):
       tsMethodCall("fc", "assert", [
         tsMethodCall("fc", "asyncProperty", [
           tsIden("state"),
-          tsAsync(
-            tsClosure(
-              [
-                tsTypedAttr("state", tsType(actionStateTypeName(action.name)))
-              ],
-              testOperations
-            )
+          tsClosure(
+            [
+              tsTypedAttr("state", tsType(actionStateTypeName(action.name)))
+            ],
+            testOperations,
+            true
           )
         ])
       ])
@@ -134,13 +133,13 @@ def toActionTest(action: Action):
   ]
 
   let testBody = [dataSetup, [stateSetup], property].flatten()
-  let testWrapper = tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody).tsAsync()
+  let testWrapper = tsClosure([tsTypedAttr("t", tsType("Deno.TestContext"))], testBody, true)
   
   tsMethodCall("Deno", "test", [action.name, testWrapper])
 end
 
 def actionTests():
-  tsClosure([], Model.actions.map(toActionTest))
+  tsClosure([], Model.actions.map(toActionTest), false)
 end
 
 def toSchemaImplImport(schema: Schema):
@@ -148,7 +147,7 @@ def toSchemaImplImport(schema: Schema):
 end
 
 def toImplActionMethod(action: Action):
-  tsClassMethod("async ".appendStr(action.name), action.args, [])
+  tsClassMethod("async ".appendStr(action.name), action.args, [], false)
 end
 
 def implClass():
@@ -164,7 +163,7 @@ def implClass():
       tsAssignment(tsIden("this.db"), tsIden("db")),
       tsAssignment(tsIden("this.client"), tsIden("client")),
       tsAssignment(tsIden("this.aux"), tsIden("aux"))
-    ])
+    ], false)
   ].concat(Model.actions.map(toImplActionMethod)))
 end
 
