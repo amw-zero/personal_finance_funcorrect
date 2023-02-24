@@ -283,27 +283,31 @@ def toSchemaModelImport(schema: Schema):
   tsSymbolImport(schema.name, schema.name.appendStr("Model"))
 end
 
-typescript:
-  {{ tsAliasImport(
-    Model.schemas.map(toSchemaImplImport)
-      .append(tsSymbolImport("Client", "Client"))
-      .append(tsSymbolImport("DBState", "DBState")),
-    "./react_ui/src/state.ts")
-  }}
-  {{ tsAliasImport(
+def imports():
+  [
+    tsAliasImport(
+      Model.schemas.map(toSchemaImplImport)
+        .append(tsSymbolImport("Client", "Client"))
+        .append(tsSymbolImport("DBState", "DBState")),
+      "./react_ui/src/state.ts"
+    ),
+    tsAliasImport(
       Model.schemas.map(toSchemaModelImport),
       "./model.ts"
-    )
-  }}
-  {{ tsAliasImport([
-    tsSymbolImport("Budget", "Budget")
-  ], "./model.ts")
-  }}
-  {{ tsAliasImport(
-    [tsSymbolImport("assertEquals", "assertEquals")],
-    "https://deno.land/std@0.149.0/testing/asserts.ts")
-  }}
-  {{ tsDefaultImport("fc", "https://cdn.skypack.dev/fast-check") }}
+    ),
+    tsAliasImport([
+      tsSymbolImport("Budget", "Budget")
+    ], "./model.ts"),
+    tsAliasImport(
+      [tsSymbolImport("assertEquals", "assertEquals")],
+      "https://deno.land/std@0.149.0/testing/asserts.ts"
+    ),
+    tsDefaultImport("fc", "https://cdn.skypack.dev/fast-check")
+  ]
+end
+
+typescript:
+  {{* imports() }}
   {{* Model.actions.map(toActionStateType) }}
   {{ tsInterface("AuxiliaryVariables", [tsTypedAttr("clientModel", tsType("Budget"))]) }}
   {{ implClass() }}
