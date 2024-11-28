@@ -152,7 +152,6 @@ GEM
     rake (13.0.6)
     reline (0.3.1)
       io-console (~> 0.5)
-    sqlite3 (1.4.4)
     strscan (3.0.3)
     thor (1.2.1)
     timeout (0.3.0)
@@ -165,6 +164,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-21
+  arm64-darwin-23
 
 DEPENDENCIES
   bootsnap
@@ -174,11 +174,10 @@ DEPENDENCIES
   puma (~> 5.0)
   rack-cors
   rails (~> 7.0.3, >= 7.0.3.1)
-  sqlite3 (~> 1.4)
   tzinfo-data
 
 RUBY VERSION
-   ruby 3.1.2p20
+   ruby 3.1.6p260
 
 BUNDLED WITH
    2.3.17

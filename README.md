@@ -18,9 +18,43 @@ The functional correctness test compares the behavior of the implementation to t
 
 # Setup
 
+```
+brew install chruby
+brew install ruby-install
+brew install sqlite
+ruby-install 3.1.6
+```
+
+Add this to shell rc (e.g. .zshrc, .bashrc, etc):
+
+```
+source /opt/homebrew/opt/chruby/share/chruby/chruby.sh
+```
+
+Start DB:
+
+```
+docker run --name pg_personal_finance -e POSTGRES_USER=personal_finance -e POSTGRES_PASSWORD=funcorrect -e POSTGRES_DB=db/personal_finance -p 5433:5432 -d postgres
+```
+
+cd into root dir of this repo.
+
+
+```
+chruby 3.1.6
+
+cd rails_api
+bundle config build.nio4r --with-cflags="-Wno-incompatible-pointer-types"
+bundle install
+rails db:setup
+```
+
+# Running
+
 Start the web server:
 
 ```
+chruby 3.1.6
 cd rails_api
 rails s
 ```
