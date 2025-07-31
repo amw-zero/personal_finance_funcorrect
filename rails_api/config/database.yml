@@ -24,6 +24,10 @@ test:
   <<: *default
   adapter: postgresql
   database: db/test
+  username: personal_finance
+  password: funcorrect
+  host: localhost
+  port: 5433
 
 production:
   <<: *default
@@ -44,3 +48,4 @@ pg_test:
   username: personal_finance
   password: funcorrect
   database: db/personal_finance_test
+  port: 5433
